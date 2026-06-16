@@ -166,9 +166,18 @@ jobs:
 
       - name: Start application with Docker Compose
         run: |
-          docker compose up -d --build
-          sleep 15
-          docker compose ps
+          docker compose version 2>&1 || docker-compose version 2>&1
+          docker compose up -d --build 2>&1 || docker-compose up -d --build 2>&1
+          echo "Waiting for services..."
+          for i in $(seq 1 15); do
+            sleep 2
+            if curl -sf http://localhost:4000/api/health > /dev/null 2>&1; then
+              echo "✅ Backend healthy after ${i} attempts"
+              break
+            fi
+            echo "  attempt $i..."
+          done
+          docker compose ps 2>&1 || docker-compose ps 2>&1
 
       - name: Seed database
         run: |
