@@ -168,4 +168,51 @@ router.get('/:id', async (req: AuthRequest, res) => {
   }
 });
 
+// POST /api/groups/:id/members — add a member to a group
+router.post('/:id/members', async (req: AuthRequest, res) => {
+  try {
+    const groupId = parseInt(req.params.id);
+    if (isNaN(groupId)) {
+      return res.status(400).json({ error: 'Invalid group ID' });
+    }
+
+    const { userId } = req.body;
+    if (!userId || typeof userId !== 'number') {
+      return res.status(400).json({ error: 'userId is required' });
+    }
+
+    const groupResult = await query('SELECT id FROM groups WHERE id = $1', [groupId]);
+    if (groupResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+
+    const memberCheck = await query(
+      'SELECT 1 FROM group_members WHERE group_id = $1 AND user_id = $2',
+      [groupId, req.userId]
+    );
+    if (memberCheck.rows.length === 0) {
+      return res.status(403).json({ error: 'Not a member of this group' });
+    }
+
+    const userResult = await query(
+      'SELECT id, name, email FROM users WHERE id = $1',
+      [userId]
+    );
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    await query(
+      'INSERT INTO group_members (group_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [groupId, userId]
+    );
+
+    res.status(201).json({ member: userResult.rows[0] });
+  } catch (err) {
+    console.error('Add group member error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
+

@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { api } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,6 +7,7 @@ import Navbar from '@/components/layout/Navbar';
 import { LoadingSpinner } from '@/components/ui/loading';
 import { EmptyState } from '@/components/ui/empty-state';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import AddMemberDialog from '@/components/AddMemberDialog';
 
 interface Expense {
   id: number;
@@ -56,10 +57,11 @@ export default function GroupDetail() {
   const [balances, setBalances] = useState<Balance[]>([]);
   const [debts, setDebts] = useState<Debt[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAddMember, setShowAddMember] = useState(false);
 
   const groupId = parseInt(id || '0');
 
-  useEffect(() => {
+  const loadData = useCallback(() => {
     if (!groupId) return;
 
     Promise.all([api.getGroup(groupId), api.getExpenses(groupId)])
@@ -73,6 +75,10 @@ export default function GroupDetail() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [groupId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   if (loading) {
     return (
@@ -91,8 +97,6 @@ export default function GroupDetail() {
       </div>
     );
   }
-
-  const currentUserBalance = balances.find((b) => b.balance !== 0);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -113,6 +117,9 @@ export default function GroupDetail() {
             </Button>
             <Button variant="outline" onClick={() => navigate(`/groups/${groupId}/settle-up`)}>
               Settle Up
+            </Button>
+            <Button variant="outline" onClick={() => setShowAddMember(true)}>
+              Add Member
             </Button>
           </div>
         </div>
@@ -230,6 +237,14 @@ export default function GroupDetail() {
           </CardContent>
         </Card>
       </main>
+
+      {showAddMember && (
+        <AddMemberDialog
+          groupId={groupId}
+          onClose={() => setShowAddMember(false)}
+          onAdded={loadData}
+        />
+      )}
     </div>
   );
 }

@@ -56,6 +56,15 @@ export const api = {
   createGroup: (data: { name: string; description?: string; memberIds?: number[] }) =>
     request<{ group: any }>('/api/groups', { method: 'POST', body: JSON.stringify(data) }),
 
+  searchUsers: (q: string) =>
+    request<{ users: any[] }>(`/api/users/search?q=${encodeURIComponent(q)}`),
+
+  addGroupMember: (groupId: number, userId: number) =>
+    request<{ member: any }>(`/api/groups/${groupId}/members`, {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
+    }),
+
   // Expenses
   getExpenses: (groupId: number) =>
     request<{ expenses: any[] }>(`/api/expenses?groupId=${groupId}`),

@@ -7,6 +7,7 @@ import { runMigrations } from './db/migrate';
 // Routes
 import authRoutes from './routes/auth';
 import groupRoutes from './routes/groups';
+import userRoutes from './routes/users';
 import expenseRoutes from './routes/expenses';
 import paymentRoutes from './routes/payments';
 
@@ -29,6 +30,7 @@ app.get('/api/health', async (_req, res) => {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/groups', groupRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/payments', paymentRoutes);
 

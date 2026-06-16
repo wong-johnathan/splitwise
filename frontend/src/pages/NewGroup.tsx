@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, ApiError } from '@/api/client';
 import { Button } from '@/components/ui/button';
@@ -6,12 +6,57 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Navbar from '@/components/layout/Navbar';
 
+interface User {
+  id: number;
+  name: string;
+  email: string;
+}
+
 export default function NewGroup() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const [memberSearch, setMemberSearch] = useState('');
+  const [memberResults, setMemberResults] = useState<User[]>([]);
+  const [selectedMembers, setSelectedMembers] = useState<User[]>([]);
+  const [searching, setSearching] = useState(false);
+
   const navigate = useNavigate();
+
+  const searchMembers = useCallback(async (q: string) => {
+    if (!q.trim()) {
+      setMemberResults([]);
+      return;
+    }
+    setSearching(true);
+    try {
+      const data = await api.searchUsers(q);
+      setMemberResults(
+        data.users.filter((u) => !selectedMembers.some((s) => s.id === u.id))
+      );
+    } catch {
+      setMemberResults([]);
+    } finally {
+      setSearching(false);
+    }
+  }, [selectedMembers]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => searchMembers(memberSearch), 300);
+    return () => clearTimeout(timer);
+  }, [memberSearch, searchMembers]);
+
+  const addMember = (user: User) => {
+    setSelectedMembers((prev) => [...prev, user]);
+    setMemberResults((prev) => prev.filter((u) => u.id !== user.id));
+    setMemberSearch('');
+  };
+
+  const removeMember = (id: number) => {
+    setSelectedMembers((prev) => prev.filter((u) => u.id !== id));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,7 +64,11 @@ export default function NewGroup() {
     setLoading(true);
 
     try {
-      await api.createGroup({ name: name.trim(), description: description.trim() || undefined });
+      await api.createGroup({
+        name: name.trim(),
+        description: description.trim() || undefined,
+        memberIds: selectedMembers.map((m) => m.id),
+      });
       navigate('/dashboard');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to create group');
@@ -64,6 +113,61 @@ export default function NewGroup() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Add Members (optional)</label>
+
+                {selectedMembers.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {selectedMembers.map((m) => (
+                      <span
+                        key={m.id}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-gray-100 text-sm"
+                      >
+                        {m.name}
+                        <button
+                          type="button"
+                          className="text-gray-400 hover:text-gray-600 leading-none"
+                          onClick={() => removeMember(m.id)}
+                          aria-label={`Remove ${m.name}`}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <Input
+                  placeholder="Search members to add..."
+                  value={memberSearch}
+                  onChange={(e) => setMemberSearch(e.target.value)}
+                />
+
+                {memberSearch.trim() && (
+                  <div className="border rounded-md divide-y max-h-48 overflow-y-auto">
+                    {searching ? (
+                      <p className="text-sm text-gray-500 py-2 text-center">Searching...</p>
+                    ) : memberResults.length === 0 ? (
+                      <p className="text-sm text-gray-500 py-2 text-center">No users found</p>
+                    ) : (
+                      memberResults.map((user) => (
+                        <button
+                          key={user.id}
+                          type="button"
+                          className="w-full flex items-center px-3 py-2 hover:bg-gray-50 text-left"
+                          onClick={() => addMember(user)}
+                        >
+                          <div>
+                            <p className="text-sm font-medium">{user.name}</p>
+                            <p className="text-xs text-gray-500">{user.email}</p>
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3 pt-2">
