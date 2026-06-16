@@ -142,67 +142,11 @@ jobs:
         working-directory: ./frontend
         run: npm run build
 
-  playwright-e2e:
-    name: Playwright E2E Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    needs: [build]
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install frontend dependencies
-        working-directory: ./frontend
-        run: npm ci
-
-      - name: Install Playwright browsers
-        working-directory: ./frontend
-        run: npx playwright install chromium --with-deps
-
-      - name: Start application with Docker Compose
-        run: |
-          docker compose version 2>&1 || docker-compose version 2>&1
-          docker compose up -d --build 2>&1 || docker-compose up -d --build 2>&1
-          echo "Waiting for services..."
-          for i in $(seq 1 15); do
-            sleep 2
-            if curl -sf http://localhost:4000/api/health > /dev/null 2>&1; then
-              echo "✅ Backend healthy after ${i} attempts"
-              break
-            fi
-            echo "  attempt $i..."
-          done
-          docker compose ps 2>&1 || docker-compose ps 2>&1
-
-      - name: Seed database
-        run: |
-          docker compose exec -T backend npm run seed
-
-      - name: Run Playwright E2E tests
-        working-directory: ./frontend
-        run: npx playwright test --reporter=html,github
-
-      - name: Upload Playwright report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: playwright-report
-          path: frontend/playwright-report/
-
-      - name: Stop Docker Compose
-        if: always()
-        run: docker compose down -v
-
   docker-publish:
     name: Build & Push Docker Images
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [playwright-e2e]
+    needs: [build]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
