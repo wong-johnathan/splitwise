@@ -25,7 +25,8 @@ test.describe('Group Members Flow', () => {
 
     // Open the dialog
     await page.getByRole('button', { name: 'Add Member' }).click();
-    await expect(page.getByText('Add Member')).toBeVisible();
+    // Dialog heading — use role to avoid matching the button too
+    await expect(page.getByRole('heading', { name: 'Add Member' })).toBeVisible();
     await expect(page.getByPlaceholder('Search by name or email...')).toBeVisible();
   });
 
