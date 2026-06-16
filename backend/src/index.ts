@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { config } from './config';
 import { pool } from './db/pool';
+import { runMigrations } from './db/migrate';
 
 // Routes
 import authRoutes from './routes/auth';
@@ -43,8 +44,13 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 });
 
 // Start server
-app.listen(config.PORT, () => {
-  console.log(`🚀 SplitEasy backend running on http://0.0.0.0:${config.PORT}`);
+app.listen(config.PORT, async () => {
+  try {
+    await runMigrations();
+  } catch {
+    console.error('❌ Failed to run migrations, server may not function correctly');
+  }
+  console.log(`🚀 SplitEasy backend running on http://localhost:${config.PORT}`);
 });
 
 // Graceful shutdown
