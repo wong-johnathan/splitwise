@@ -65,6 +65,9 @@ export const api = {
       body: JSON.stringify({ userId }),
     }),
 
+  deleteGroup: (id: number) =>
+    request<{ message: string }>(`/api/groups/${id}`, { method: 'DELETE' }),
+
   // Expenses
   getExpenses: (groupId: number) =>
     request<{ expenses: any[] }>(`/api/expenses?groupId=${groupId}`),

@@ -114,6 +114,17 @@ export default function GroupDetail() {
     }
   };
 
+  const handleDeleteGroup = async () => {
+    if (!window.confirm(`Delete "${group?.name}" and all its data? This cannot be undone.`)) return;
+    try {
+      await api.deleteGroup(groupId);
+      navigate('/dashboard');
+    } catch (err) {
+      console.error('Delete group error:', err);
+      alert('Failed to delete group. Only the group creator can delete it.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -323,6 +334,16 @@ export default function GroupDetail() {
             )}
           </CardContent>
         </Card>
+
+        {/* Delete group */}
+        <div className="mt-8 text-center">
+          <button
+            onClick={handleDeleteGroup}
+            className="text-xs text-red-400 hover:text-red-600 underline"
+          >
+            Delete this group and all its data
+          </button>
+        </div>
       </main>
 
       {showAddMember && (

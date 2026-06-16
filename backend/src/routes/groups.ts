@@ -225,5 +225,29 @@ router.post('/:id/members', async (req: AuthRequest, res) => {
   }
 });
 
+// DELETE /api/groups/:id — delete a group (only creator can delete)
+router.delete('/:id', async (req: AuthRequest, res) => {
+  try {
+    const groupId = parseInt(req.params.id);
+    if (isNaN(groupId)) {
+      return res.status(400).json({ error: 'Invalid group ID' });
+    }
+
+    const result = await query(
+      'DELETE FROM groups WHERE id = $1 AND created_by = $2 RETURNING id',
+      [groupId, req.userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Group not found or not authorized' });
+    }
+
+    res.json({ message: 'Group deleted' });
+  } catch (err) {
+    console.error('Delete group error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
 
