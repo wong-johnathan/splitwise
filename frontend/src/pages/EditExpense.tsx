@@ -16,14 +16,19 @@ interface Member {
 
 type SplitMethod = 'equal' | 'percentage' | 'custom';
 
-export default function NewExpense() {
-  const { id } = useParams<{ id: string }>();
+export default function EditExpense() {
+  const { groupId: groupIdParam, expenseId: expenseIdParam } = useParams<{
+    groupId: string;
+    expenseId: string;
+  }>();
   const navigate = useNavigate();
-  const groupId = parseInt(id || '0');
+  const groupId = parseInt(groupIdParam || '0');
+  const expenseId = parseInt(expenseIdParam || '0');
 
   const [members, setMembers] = useState<Member[]>([]);
   const [groupName, setGroupName] = useState('');
   const [loading, setLoading] = useState(true);
+  const [expenseLoading, setExpenseLoading] = useState(true);
 
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
@@ -36,39 +41,49 @@ export default function NewExpense() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!groupId) return;
+    if (!groupId || !expenseId) return;
 
-    api
-      .getGroup(groupId)
-      .then((data) => {
-        const ms = data.members;
+    Promise.all([api.getGroup(groupId), api.getExpense(expenseId)])
+      .then(([groupData, expenseData]) => {
+        const ms = groupData.members;
+        const exp = expenseData.expense;
+        const splits = expenseData.splits;
+
         setMembers(ms);
-        setGroupName(data.group.name);
-        if (ms.length > 0) {
-          const firstId = ms[0].id;
-          setPaidBy(firstId);
-          // Default: everyone checked except the payer
-          setCheckedMembers(new Set(ms.filter((m: Member) => m.id !== firstId).map((m: Member) => m.id)));
-        }
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [groupId]);
+        setGroupName(groupData.group.name);
 
-  // When paidBy changes, re-sync checkboxes
-  useEffect(() => {
-    if (!paidBy || members.length === 0) return;
-    const newChecked = new Set(checkedMembers);
-    // Payer is always unchecked
-    newChecked.delete(paidBy);
-    // Ensure all other members have a state (add if not present)
-    members.forEach((m) => {
-      if (m.id !== paidBy && !newChecked.has(m.id) && newChecked.size > 0) {
-        // Only auto-add if we already have a set (means initial load done)
-      }
-    });
-    setCheckedMembers(newChecked);
-  }, [paidBy]);
+        // Pre-populate form
+        setDescription(exp.description);
+        setAmount(String(exp.amount));
+        setPaidBy(exp.paid_by);
+        setSplitMethod(exp.split_method || 'equal');
+
+        // Determine which members were included in the split
+        const splitUserIds = new Set(splits.map((s: any) => s.user_id));
+        const checked = new Set(
+          ms
+            .filter((m: Member) => splitUserIds.has(m.id))
+            .map((m: Member) => m.id)
+        );
+        setCheckedMembers(checked);
+
+        // Pre-fill custom or percentage splits
+        const customMap: Record<number, string> = {};
+        const pctMap: Record<number, string> = {};
+        for (const split of splits) {
+          customMap[split.user_id] = String(split.amount);
+          if (split.percentage != null) {
+            pctMap[split.user_id] = String(split.percentage);
+          }
+        }
+        setCustomSplits(customMap);
+        setPercentSplits(pctMap);
+
+        setExpenseLoading(false);
+        setLoading(false);
+      })
+      .catch(console.error);
+  }, [groupId, expenseId]);
 
   const toggleMember = (memberId: number) => {
     setCheckedMembers((prev) => {
@@ -92,14 +107,6 @@ export default function NewExpense() {
     return checkedList.map((m) => ({ name: m.name, amount: share }));
   };
 
-  const getPercentPreview = () => {
-    if (!numAmount || checkedCount === 0) return [];
-    return checkedList.map((m) => {
-      const pct = parseFloat(percentSplits[m.id] || '0');
-      return { name: m.name, amount: pct > 0 ? (pct / 100) * numAmount : 0 };
-    });
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -120,7 +127,6 @@ export default function NewExpense() {
     setSubmitting(true);
     try {
       const payload: any = {
-        groupId,
         description: description.trim(),
         amount: numAmount,
         splitMethod,
@@ -162,10 +168,10 @@ export default function NewExpense() {
         }));
       }
 
-      await api.createExpense(payload);
+      await api.updateExpense(expenseId, payload);
       navigate(`/groups/${groupId}`);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to create expense');
+      setError(err instanceof ApiError ? err.message : 'Failed to update expense');
     } finally {
       setSubmitting(false);
     }
@@ -186,7 +192,7 @@ export default function NewExpense() {
       <main className="max-w-2xl mx-auto px-4 py-8">
         <Card>
           <CardHeader>
-            <CardTitle>Add Expense</CardTitle>
+            <CardTitle>Edit Expense</CardTitle>
             <CardDescription>{groupName}</CardDescription>
           </CardHeader>
           <CardContent>
@@ -228,7 +234,6 @@ export default function NewExpense() {
                   onChange={(e) => {
                     const newPayer = parseInt(e.target.value);
                     setPaidBy(newPayer);
-                    // Uncheck the payer
                     setCheckedMembers((prev) => {
                       const next = new Set(prev);
                       next.delete(newPayer);
@@ -395,7 +400,7 @@ export default function NewExpense() {
 
               <div className="flex gap-3 pt-2">
                 <Button type="submit" disabled={submitting || !description || !amount || !paidBy}>
-                  {submitting ? 'Adding...' : 'Add Expense'}
+                  {submitting ? 'Saving...' : 'Save Changes'}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => navigate(`/groups/${groupId}`)}>
                   Cancel

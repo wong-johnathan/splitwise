@@ -69,17 +69,35 @@ export const api = {
   getExpenses: (groupId: number) =>
     request<{ expenses: any[] }>(`/api/expenses?groupId=${groupId}`),
 
+  getExpense: (id: number) =>
+    request<{ expense: any; splits: any[] }>(`/api/expenses/${id}`),
+
   createExpense: (data: {
     groupId: number;
     description: string;
     amount: number;
     splitMethod?: string;
     paidBy?: number;
-    splits?: { userId: number; amount: number }[];
+    splits?: { userId: number; amount: number; percentage?: number }[];
+    memberIds?: number[];
     date?: string;
   }) =>
     request<{ expense: any; splits: any[] }>('/api/expenses', {
       method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateExpense: (id: number, data: {
+    description: string;
+    amount: number;
+    splitMethod?: string;
+    paidBy?: number;
+    splits?: { userId: number; amount: number; percentage?: number }[];
+    memberIds?: number[];
+    date?: string;
+  }) =>
+    request<{ expense: any; splits: any[] }>(`/api/expenses/${id}`, {
+      method: 'PUT',
       body: JSON.stringify(data),
     }),
 

@@ -211,15 +211,24 @@ export default function GroupDetail() {
                     key={expense.id}
                     className="border rounded-lg p-3 hover:bg-gray-50 transition-colors"
                   >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="font-medium">{expense.description}</p>
-                        <p className="text-sm text-gray-500">
-                          Paid by {expense.paid_by_name} · {formatDate(expense.expense_date)}
-                        </p>
+                      <div className="flex items-start gap-2">
+                        <div className="flex-1">
+                          <p className="font-medium">{expense.description}</p>
+                          <p className="text-sm text-gray-500">
+                            Paid by {expense.paid_by_name} · {formatDate(expense.expense_date)}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-lg">{formatCurrency(expense.amount)}</span>
+                          <button
+                            onClick={() => navigate(`/groups/${groupId}/expenses/${expense.id}/edit`)}
+                            className="text-xs text-gray-400 hover:text-blue-600 underline"
+                            title="Edit expense"
+                          >
+                            edit
+                          </button>
+                        </div>
                       </div>
-                      <span className="font-bold text-lg">{formatCurrency(expense.amount)}</span>
-                    </div>
                     <div className="mt-2 flex flex-wrap gap-1">
                       {expense.splits.map((split) => (
                         <span

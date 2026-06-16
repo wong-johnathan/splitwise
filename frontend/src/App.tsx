@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import NewGroup from './pages/NewGroup';
 import GroupDetail from './pages/GroupDetail';
 import NewExpense from './pages/NewExpense';
+import EditExpense from './pages/EditExpense';
 import SettleUp from './pages/SettleUp';
 
 export default function App() {
@@ -43,6 +44,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <NewExpense />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/groups/:groupId/expenses/:expenseId/edit"
+            element={
+              <ProtectedRoute>
+                <EditExpense />
               </ProtectedRoute>
             }
           />

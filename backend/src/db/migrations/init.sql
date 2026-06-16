@@ -33,7 +33,7 @@ CREATE TABLE group_members (
 );
 
 -- EXPENSES
-CREATE TYPE split_method AS ENUM ('equal', 'custom');
+CREATE TYPE split_method AS ENUM ('equal', 'custom', 'percentage');
 
 CREATE TABLE expenses (
   id SERIAL PRIMARY KEY,
@@ -53,6 +53,7 @@ CREATE TABLE expense_splits (
   expense_id INTEGER NOT NULL REFERENCES expenses(id) ON DELETE CASCADE,
   user_id INTEGER NOT NULL REFERENCES users(id),
   amount DECIMAL(12,2) NOT NULL CHECK (amount >= 0),
+  percentage DECIMAL(5,2),
   settled BOOLEAN DEFAULT FALSE,
   UNIQUE(expense_id, user_id)
 );
