@@ -90,6 +90,10 @@ jobs:
           DATABASE_URL: ${{ env.DATABASE_URL }}
           JWT_SECRET: ${{ env.JWT_SECRET }}
 
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
       - name: Run frontend unit tests with coverage
         working-directory: ./frontend
         run: npm test -- --coverage --verbose
