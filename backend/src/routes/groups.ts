@@ -67,7 +67,9 @@ router.get('/', async (req: AuthRequest, res) => {
         const balanceResult = await query(
           `SELECT
             COALESCE((SELECT SUM(amount) FROM expenses WHERE paid_by = $1 AND group_id = $2), 0) -
-            COALESCE((SELECT SUM(es.amount) FROM expense_splits es JOIN expenses e ON e.id = es.expense_id WHERE es.user_id = $1 AND e.group_id = $2), 0)
+            COALESCE((SELECT SUM(es.amount) FROM expense_splits es JOIN expenses e ON e.id = es.expense_id WHERE es.user_id = $1 AND e.group_id = $2), 0) +
+            COALESCE((SELECT SUM(amount) FROM payments WHERE from_user = $1 AND group_id = $2), 0) -
+            COALESCE((SELECT SUM(amount) FROM payments WHERE to_user = $1 AND group_id = $2), 0)
           AS balance`,
           [req.userId, group.id]
         );
@@ -109,12 +111,13 @@ router.get('/:id', async (req: AuthRequest, res) => {
       [groupId]
     );
 
-    // Compute per-user balances
+    // Compute per-user balances (expenses - splits + payments sent - payments received)
     const balanceResult = await query(
       `SELECT
         u.id,
         u.name,
-        COALESCE(paid.total_paid, 0) - COALESCE(owed.total_owed, 0) AS net_balance
+        COALESCE(paid.total_paid, 0) - COALESCE(owed.total_owed, 0)
+        + COALESCE(sent.total_sent, 0) - COALESCE(received.total_received, 0) AS net_balance
       FROM group_members gm
       JOIN users u ON u.id = gm.user_id
       LEFT JOIN (
@@ -128,6 +131,14 @@ router.get('/:id', async (req: AuthRequest, res) => {
         WHERE e.group_id = $1
         GROUP BY es.user_id
       ) owed ON owed.user_id = u.id
+      LEFT JOIN (
+        SELECT from_user AS user_id, SUM(amount) AS total_sent
+        FROM payments WHERE group_id = $1 GROUP BY from_user
+      ) sent ON sent.user_id = u.id
+      LEFT JOIN (
+        SELECT to_user AS user_id, SUM(amount) AS total_received
+        FROM payments WHERE group_id = $1 GROUP BY to_user
+      ) received ON received.user_id = u.id
       WHERE gm.group_id = $1`,
       [groupId]
     );

@@ -42,6 +42,7 @@ export default function SettleUp() {
   const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -80,10 +81,12 @@ export default function SettleUp() {
         toUser: selectedDebt.toUser,
         amount: numAmount,
         note: note.trim() || undefined,
+        date: date || undefined,
       });
       setSuccess(true);
       setAmount('');
       setNote('');
+      setDate(new Date().toISOString().split('T')[0]);
       setSelectedDebt(null);
       fetchData();
       setTimeout(() => setSuccess(false), 3000);
@@ -180,8 +183,10 @@ export default function SettleUp() {
                 Pay {selectedDebt.toUserName}
               </CardTitle>
               <CardDescription>
-                You're recording that {selectedDebt.fromUserName} is paying{' '}
-                {selectedDebt.toUserName}
+                Recording a payment will reduce the amount{' '}
+                {selectedDebt.fromUserName} owes to{' '}
+                {selectedDebt.toUserName}. The balances will update
+                automatically.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -207,6 +212,14 @@ export default function SettleUp() {
                     placeholder="e.g. Paid via bank transfer"
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Settlement Date</Label>
+                  <Input
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
                   />
                 </div>
                 <div className="flex gap-2">

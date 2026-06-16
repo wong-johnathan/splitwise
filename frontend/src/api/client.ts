@@ -108,6 +108,6 @@ export const api = {
   getPayments: (groupId: number) =>
     request<{ payments: any[] }>(`/api/payments?groupId=${groupId}`),
 
-  createPayment: (data: { groupId: number; toUser: number; amount: number; note?: string }) =>
+  createPayment: (data: { groupId: number; toUser: number; amount: number; note?: string; date?: string }) =>
     request<{ payment: any }>('/api/payments', { method: 'POST', body: JSON.stringify(data) }),
 };

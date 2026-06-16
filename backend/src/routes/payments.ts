@@ -5,10 +5,10 @@ import { requireAuth, AuthRequest } from '../middleware/auth';
 const router = Router();
 router.use(requireAuth);
 
-// POST /api/payments — record a settlement payment
+// POST /api/payments — record a settlement payment (reduces the amount owed)
 router.post('/', async (req: AuthRequest, res) => {
   try {
-    const { groupId, toUser, amount, note } = req.body;
+    const { groupId, toUser, amount, note, date } = req.body;
 
     if (!groupId || !toUser || !amount) {
       return res.status(400).json({ error: 'groupId, toUser, and amount are required' });
@@ -31,10 +31,13 @@ router.post('/', async (req: AuthRequest, res) => {
       return res.status(403).json({ error: 'Both users must be group members' });
     }
 
+    // Use provided date or default to today
+    const paymentDate = date || new Date().toISOString().split('T')[0];
+
     const result = await query(
-      `INSERT INTO payments (group_id, from_user, to_user, amount, note)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [groupId, req.userId, toUser, numAmount, note || null]
+      `INSERT INTO payments (group_id, from_user, to_user, amount, note, date)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [groupId, req.userId, toUser, numAmount, note || null, paymentDate]
     );
 
     const payment = result.rows[0];
