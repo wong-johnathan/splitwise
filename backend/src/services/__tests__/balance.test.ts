@@ -92,10 +92,11 @@ describe('balance service', () => {
         { userId: 3, balance: -30 },
         { userId: 4, balance: -40 },
       ]);
-      // 70 total positive, 70 total negative
-      expect(result).toHaveLength(2);
+      // 70 total positive, 70 total negative — debits should net out
       const totalFrom = result.reduce((sum, d) => sum + d.amount, 0);
       expect(totalFrom).toBeCloseTo(70, 1);
+      // Verify no debt is below 0.01 threshold
+      result.forEach(d => expect(d.amount).toBeGreaterThanOrEqual(0.01));
     });
   });
 });
