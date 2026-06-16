@@ -1,19 +1,18 @@
 import { test, expect } from '@playwright/test';
 
-const TEST_EMAIL = `members-${Date.now()}@example.com`;
+const uniqueEmail = () => `members-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
 
 test.describe('Group Members Flow', () => {
-  test.beforeEach(async ({ page }) => {
+  test('Add Member dialog opens and search input renders', async ({ page }) => {
+    const email = uniqueEmail();
     await page.goto('/login');
     await page.getByText('Register').click();
-    await page.getByPlaceholder('you@example.com').fill(TEST_EMAIL);
+    await page.getByPlaceholder('you@example.com').fill(email);
     await page.getByPlaceholder('Your name').fill('Members Tester');
     await page.getByPlaceholder('At least 6 characters').fill('testpass123');
     await page.getByRole('button', { name: 'Create Account' }).click();
     await expect(page).toHaveURL(/\/dashboard/);
-  });
 
-  test('Add Member dialog opens and search input renders', async ({ page }) => {
     // Create a group first
     await page.getByRole('button', { name: 'New Group' }).click();
     await page.getByPlaceholder('e.g. Trip to Bali').fill('Member Test Group');
@@ -31,6 +30,15 @@ test.describe('Group Members Flow', () => {
   });
 
   test('Add Member dialog shows help text before searching', async ({ page }) => {
+    const email = uniqueEmail();
+    await page.goto('/login');
+    await page.getByText('Register').click();
+    await page.getByPlaceholder('you@example.com').fill(email);
+    await page.getByPlaceholder('Your name').fill('Help Text Tester');
+    await page.getByPlaceholder('At least 6 characters').fill('testpass123');
+    await page.getByRole('button', { name: 'Create Account' }).click();
+    await expect(page).toHaveURL(/\/dashboard/);
+
     await page.getByRole('button', { name: 'New Group' }).click();
     await page.getByPlaceholder('e.g. Trip to Bali').fill('Help Text Group');
     await page.getByRole('button', { name: 'Create Group' }).click();
@@ -42,6 +50,15 @@ test.describe('Group Members Flow', () => {
   });
 
   test('Add Member search accepts input', async ({ page }) => {
+    const email = uniqueEmail();
+    await page.goto('/login');
+    await page.getByText('Register').click();
+    await page.getByPlaceholder('you@example.com').fill(email);
+    await page.getByPlaceholder('Your name').fill('Search Tester');
+    await page.getByPlaceholder('At least 6 characters').fill('testpass123');
+    await page.getByRole('button', { name: 'Create Account' }).click();
+    await expect(page).toHaveURL(/\/dashboard/);
+
     await page.getByRole('button', { name: 'New Group' }).click();
     await page.getByPlaceholder('e.g. Trip to Bali').fill('Search Test Group');
     await page.getByRole('button', { name: 'Create Group' }).click();
@@ -58,12 +75,30 @@ test.describe('Group Members Flow', () => {
   });
 
   test('new group creation shows member search field', async ({ page }) => {
+    const email = uniqueEmail();
+    await page.goto('/login');
+    await page.getByText('Register').click();
+    await page.getByPlaceholder('you@example.com').fill(email);
+    await page.getByPlaceholder('Your name').fill('New Group Tester');
+    await page.getByPlaceholder('At least 6 characters').fill('testpass123');
+    await page.getByRole('button', { name: 'Create Account' }).click();
+    await expect(page).toHaveURL(/\/dashboard/);
+
     await page.getByRole('button', { name: 'New Group' }).click();
     await expect(page).toHaveURL(/\/groups\/new/);
     await expect(page.getByPlaceholder('Search members to add...')).toBeVisible();
   });
 
   test('new group member search accepts input', async ({ page }) => {
+    const email = uniqueEmail();
+    await page.goto('/login');
+    await page.getByText('Register').click();
+    await page.getByPlaceholder('you@example.com').fill(email);
+    await page.getByPlaceholder('Your name').fill('Search Input Tester');
+    await page.getByPlaceholder('At least 6 characters').fill('testpass123');
+    await page.getByRole('button', { name: 'Create Account' }).click();
+    await expect(page).toHaveURL(/\/dashboard/);
+
     await page.getByRole('button', { name: 'New Group' }).click();
     const memberSearch = page.getByPlaceholder('Search members to add...');
     await memberSearch.fill('someone');
