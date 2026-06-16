@@ -1,0 +1,189 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: "20"
+  DATABASE_URL: postgres://spliteasy:spliteasy_dev@localhost:5432/spliteasy
+  REDIS_URL: redis://localhost:6379
+  JWT_SECRET: ci-secret-do-not-use
+  POSTGRES_USER: spliteasy
+  POSTGRES_PASSWORD: spliteasy_dev
+  POSTGRES_DB: spliteasy
+
+jobs:
+  lint:
+    name: Lint (Type Check)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: TypeScript check (backend)
+        working-directory: ./backend
+        run: npx tsc --noEmit
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: TypeScript check (frontend)
+        working-directory: ./frontend
+        run: npx tsc --noEmit
+
+  unit-tests:
+    name: Unit Tests + Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: spliteasy
+          POSTGRES_PASSWORD: spliteasy_dev
+          POSTGRES_DB: spliteasy
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready -U spliteasy
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Run database migration
+        working-directory: ./backend
+        run: PGPASSWORD=spliteasy_dev psql -h localhost -U spliteasy -d spliteasy -f src/db/migrations/init.sql
+
+      - name: Run backend unit tests with coverage
+        working-directory: ./backend
+        run: npm test -- --coverage --verbose
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+          JWT_SECRET: ${{ env.JWT_SECRET }}
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Run frontend unit tests with coverage
+        working-directory: ./frontend
+        run: npm test -- --coverage --verbose
+
+      - name: Upload backend coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-coverage
+          path: backend/coverage/
+
+      - name: Upload frontend coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/
+
+  build:
+    name: Build Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [lint, unit-tests]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Build backend
+        working-directory: ./backend
+        run: npm run build
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build
+
+  playwright-e2e:
+    name: Playwright E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [build]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: ./frontend
+        run: npx playwright install chromium --with-deps
+
+      - name: Start application with Docker Compose
+        run: |
+          docker compose up -d --build
+          # Wait for services to be healthy
+          sleep 15
+          docker compose ps
+
+      - name: Seed database
+        run: |
+          docker compose exec -T backend npm run seed
+
+      - name: Run Playwright E2E tests
+        run: |
+          npx playwright test --reporter=html,github
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+
+      - name: Stop Docker Compose
+        if: always()
+        run: docker compose down -v

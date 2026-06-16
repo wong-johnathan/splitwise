@@ -3,3 +3,6 @@ dist/
 .env
 *.log
 pgdata/
+coverage/
+playwright-report/
+test-results/
