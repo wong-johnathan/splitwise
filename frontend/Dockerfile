@@ -1,13 +1,20 @@
+FROM node:20-alpine AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
 FROM node:20-alpine AS dev
 WORKDIR /app
-COPY package.json ./
+COPY package.json package-lock.json ./
 RUN npm install
 COPY . .
 EXPOSE 5173
-CMD ["npm", "run", "dev"]
+CMD ["npm", "run", "dev", "--", "--host"]
 
 FROM nginx:alpine AS prod
-COPY --from=dev /app/dist /usr/share/nginx/html
+COPY --from=build /app/dist /usr/share/nginx/html
 RUN echo 'server { \
   listen 80; \
   root /usr/share/nginx/html; \
