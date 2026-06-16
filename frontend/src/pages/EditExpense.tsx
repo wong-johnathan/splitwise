@@ -234,11 +234,6 @@ export default function EditExpense() {
                   onChange={(e) => {
                     const newPayer = parseInt(e.target.value);
                     setPaidBy(newPayer);
-                    setCheckedMembers((prev) => {
-                      const next = new Set(prev);
-                      next.delete(newPayer);
-                      return next;
-                    });
                   }}
                   required
                 >
@@ -261,19 +256,16 @@ export default function EditExpense() {
                     return (
                       <label
                         key={m.id}
-                        className={`flex items-center gap-2 py-1 px-2 rounded cursor-pointer text-sm ${
-                          isPayer ? 'text-gray-400' : 'hover:bg-gray-50'
-                        }`}
+                        className={`flex items-center gap-2 py-1 px-2 rounded cursor-pointer text-sm hover:bg-gray-50`}
                       >
                         <input
                           type="checkbox"
                           checked={checked}
-                          disabled={isPayer}
                           onChange={() => toggleMember(m.id)}
                           className="rounded"
                         />
                         <span>{m.name}</span>
-                        {isPayer && <span className="text-xs text-gray-400">(paid)</span>}
+                        {isPayer && <span className="text-xs text-blue-500 ml-1">(paid)</span>}
                       </label>
                     );
                   })}

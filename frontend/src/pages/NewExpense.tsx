@@ -47,24 +47,23 @@ export default function NewExpense() {
         if (ms.length > 0) {
           const firstId = ms[0].id;
           setPaidBy(firstId);
-          // Default: everyone checked except the payer
-          setCheckedMembers(new Set(ms.filter((m: Member) => m.id !== firstId).map((m: Member) => m.id)));
+          // Default: everyone checked (payer included in the split)
+          setCheckedMembers(new Set(ms.map((m: Member) => m.id)));
         }
       })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [groupId]);
 
-  // When paidBy changes, re-sync checkboxes
+  // When paidBy changes, ensure all members stay checked
   useEffect(() => {
     if (!paidBy || members.length === 0) return;
     const newChecked = new Set(checkedMembers);
-    // Payer is always unchecked
-    newChecked.delete(paidBy);
-    // Ensure all other members have a state (add if not present)
+    // Ensure every member has a state
     members.forEach((m) => {
-      if (m.id !== paidBy && !newChecked.has(m.id) && newChecked.size > 0) {
-        // Only auto-add if we already have a set (means initial load done)
+      if (!newChecked.has(m.id) && newChecked.size > 0) {
+        // Member hasn't been explicitly unchecked yet, add them
+        newChecked.add(m.id);
       }
     });
     setCheckedMembers(newChecked);
@@ -228,12 +227,6 @@ export default function NewExpense() {
                   onChange={(e) => {
                     const newPayer = parseInt(e.target.value);
                     setPaidBy(newPayer);
-                    // Uncheck the payer
-                    setCheckedMembers((prev) => {
-                      const next = new Set(prev);
-                      next.delete(newPayer);
-                      return next;
-                    });
                   }}
                   required
                 >
@@ -256,19 +249,16 @@ export default function NewExpense() {
                     return (
                       <label
                         key={m.id}
-                        className={`flex items-center gap-2 py-1 px-2 rounded cursor-pointer text-sm ${
-                          isPayer ? 'text-gray-400' : 'hover:bg-gray-50'
-                        }`}
+                        className={`flex items-center gap-2 py-1 px-2 rounded cursor-pointer text-sm hover:bg-gray-50`}
                       >
                         <input
                           type="checkbox"
                           checked={checked}
-                          disabled={isPayer}
                           onChange={() => toggleMember(m.id)}
                           className="rounded"
                         />
                         <span>{m.name}</span>
-                        {isPayer && <span className="text-xs text-gray-400">(paid)</span>}
+                        {isPayer && <span className="text-xs text-blue-500 ml-1">(paid)</span>}
                       </label>
                     );
                   })}
