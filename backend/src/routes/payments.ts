@@ -8,7 +8,7 @@ router.use(requireAuth);
 // POST /api/payments — record a settlement payment (reduces the amount owed)
 router.post('/', async (req: AuthRequest, res) => {
   try {
-    const { groupId, toUser, amount, note, date } = req.body;
+    const { groupId, toUser, amount, note, date, fromUser } = req.body;
 
     if (!groupId || !toUser || !amount) {
       return res.status(400).json({ error: 'groupId, toUser, and amount are required' });
@@ -19,13 +19,16 @@ router.post('/', async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'Amount must be a positive number' });
     }
 
+    // fromUser defaults to current user, but can be set to record someone else paying
+    const payer = fromUser || req.userId;
+
     // Verify both users are group members
     const memberCheck = await query(
       `SELECT 1 FROM group_members
        WHERE group_id = $1 AND user_id IN ($2, $3)
        GROUP BY group_id
        HAVING COUNT(*) = 2`,
-      [groupId, req.userId, toUser]
+      [groupId, payer, toUser]
     );
     if (memberCheck.rows.length === 0) {
       return res.status(403).json({ error: 'Both users must be group members' });
@@ -37,7 +40,7 @@ router.post('/', async (req: AuthRequest, res) => {
     const result = await query(
       `INSERT INTO payments (group_id, from_user, to_user, amount, note, date)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [groupId, req.userId, toUser, numAmount, note || null, paymentDate]
+      [groupId, payer, toUser, numAmount, note || null, paymentDate]
     );
 
     const payment = result.rows[0];

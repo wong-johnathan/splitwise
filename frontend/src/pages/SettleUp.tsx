@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError } from '@/api/client';
+import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,6 +34,7 @@ export default function SettleUp() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const groupId = parseInt(id || '0');
+  const { user } = useAuth();
 
   const [groupName, setGroupName] = useState('');
   const [debts, setDebts] = useState<Debt[]>([]);
@@ -40,6 +42,7 @@ export default function SettleUp() {
   const [loading, setLoading] = useState(true);
 
   const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
+  const [settleDirection, setSettleDirection] = useState<'paying' | 'receiving'>('paying');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -64,8 +67,28 @@ export default function SettleUp() {
     fetchData();
   }, [groupId]);
 
+  const userId = user?.id;
+
+  // Filter to debts involving the current user only
+  const debtsOwedToMe = debts.filter((d) => userId && d.toUser === userId);
+  const debtsIOwe = debts.filter((d) => userId && d.fromUser === userId);
+
+  const handleSelectDebt = (d: Debt) => {
+    if (!userId) return;
+    if (d.toUser === userId) {
+      // Someone owes me — they are paying me
+      setSettleDirection('receiving');
+    } else {
+      // I owe someone — I am paying them
+      setSettleDirection('paying');
+    }
+    setSelectedDebt(d);
+    setAmount(d.amount.toFixed(2));
+    setError('');
+  };
+
   const handleSettle = async () => {
-    if (!selectedDebt) return;
+    if (!selectedDebt || !userId) return;
     setError('');
 
     const numAmount = parseFloat(amount);
@@ -76,13 +99,26 @@ export default function SettleUp() {
 
     setSubmitting(true);
     try {
-      await api.createPayment({
-        groupId,
-        toUser: selectedDebt.toUser,
-        amount: numAmount,
-        note: note.trim() || undefined,
-        date: date || undefined,
-      });
+      if (settleDirection === 'paying') {
+        // I owe them → I pay them
+        await api.createPayment({
+          groupId,
+          toUser: selectedDebt.toUser,
+          amount: numAmount,
+          note: note.trim() || undefined,
+          date: date || undefined,
+        });
+      } else {
+        // They owe me → they pay me
+        await api.createPayment({
+          groupId,
+          fromUser: selectedDebt.fromUser,
+          toUser: userId,
+          amount: numAmount,
+          note: note.trim() || undefined,
+          date: date || undefined,
+        });
+      }
       setSuccess(true);
       setAmount('');
       setNote('');
@@ -97,6 +133,8 @@ export default function SettleUp() {
     }
   };
 
+  const involvedDebts = [...debtsOwedToMe, ...debtsIOwe];
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -105,9 +143,6 @@ export default function SettleUp() {
       </div>
     );
   }
-
-  const userDebts = debts.filter((d) => d.fromUser);
-  const userOwed = debts.filter((d) => d.toUser);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -129,33 +164,28 @@ export default function SettleUp() {
           </div>
         )}
 
-        {/* Debts summary */}
-        {debts.length > 0 && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="text-lg">Summary</CardTitle>
-              <CardDescription>Simplified debts within this group</CardDescription>
+        {/* People who owe me */}
+        {debtsOwedToMe.length > 0 && (
+          <Card className="mb-4 border-green-200">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg text-green-700">People who owe you</CardTitle>
+              <CardDescription>Click to record them paying you back</CardDescription>
             </CardHeader>
             <CardContent className="pt-0">
               <div className="space-y-2">
-                {debts.map((d, i) => (
+                {debtsOwedToMe.map((d, i) => (
                   <div
-                    key={i}
+                    key={`owed-${i}`}
                     className={`p-3 rounded-lg border cursor-pointer transition-colors ${
                       selectedDebt === d
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'hover:bg-gray-50'
+                        ? 'border-green-500 bg-green-50'
+                        : 'border-green-100 hover:bg-green-50'
                     }`}
-                    onClick={() => {
-                      setSelectedDebt(d);
-                      setAmount(d.amount.toFixed(2));
-                      setError('');
-                    }}
+                    onClick={() => handleSelectDebt(d)}
                   >
                     <p className="text-sm">
-                      <span className="font-medium">{d.fromUserName}</span> owes{' '}
-                      <span className="font-bold">{formatCurrency(d.amount)}</span> to{' '}
-                      <span className="font-medium">{d.toUserName}</span>
+                      <span className="font-medium">{d.fromUserName}</span> owes you{' '}
+                      <span className="font-bold">{formatCurrency(d.amount)}</span>
                     </p>
                   </div>
                 ))}
@@ -164,12 +194,43 @@ export default function SettleUp() {
           </Card>
         )}
 
-        {debts.length === 0 && (
+        {/* People I owe */}
+        {debtsIOwe.length > 0 && (
+          <Card className="mb-4 border-red-200">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg text-red-700">You owe</CardTitle>
+              <CardDescription>Click to record your payment to them</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="space-y-2">
+                {debtsIOwe.map((d, i) => (
+                  <div
+                    key={`owe-${i}`}
+                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                      selectedDebt === d
+                        ? 'border-red-500 bg-red-50'
+                        : 'border-red-100 hover:bg-red-50'
+                    }`}
+                    onClick={() => handleSelectDebt(d)}
+                  >
+                    <p className="text-sm">
+                      You owe{' '}
+                      <span className="font-medium">{d.toUserName}</span>{' '}
+                      <span className="font-bold">{formatCurrency(d.amount)}</span>
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {involvedDebts.length === 0 && (
           <Card className="mb-6">
             <CardContent className="p-6">
               <EmptyState
                 title="All settled up!"
-                description="No one owes anyone in this group."
+                description="You don't owe anyone and no one owes you in this group."
               />
             </CardContent>
           </Card>
@@ -180,13 +241,14 @@ export default function SettleUp() {
           <Card className="mb-6 border-blue-200">
             <CardHeader>
               <CardTitle className="text-lg">
-                Pay {selectedDebt.toUserName}
+                {settleDirection === 'paying'
+                  ? `Pay ${selectedDebt.toUserName}`
+                  : `Record ${selectedDebt.fromUserName}'s payment to you`}
               </CardTitle>
               <CardDescription>
-                Recording a payment will reduce the amount{' '}
-                {selectedDebt.fromUserName} owes to{' '}
-                {selectedDebt.toUserName}. The balances will update
-                automatically.
+                {settleDirection === 'paying'
+                  ? `Recording that you're paying ${selectedDebt.toUserName}$${selectedDebt.amount.toFixed(2)}`
+                  : `Recording that ${selectedDebt.fromUserName} is paying you back`}
               </CardDescription>
             </CardHeader>
             <CardContent>
