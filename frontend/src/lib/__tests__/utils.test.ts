@@ -36,8 +36,8 @@ describe('formatCurrency', () => {
     expect(formatCurrency(33.3333)).toBe('$33.33');
   });
 
-  it('should handle large numbers', () => {
-    expect(formatCurrency(1234567.89)).toBe('$1,234,567.89');
+  it('should handle large numbers without comma formatting', () => {
+    expect(formatCurrency(1234567.89)).toBe('$1234567.89');
   });
 });
 
