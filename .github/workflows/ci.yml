@@ -94,9 +94,9 @@ jobs:
         working-directory: ./frontend
         run: npm ci
 
-      - name: Run frontend unit tests with coverage
+      - name: Run frontend unit tests
         working-directory: ./frontend
-        run: npm test -- --coverage --verbose
+        run: ./node_modules/.bin/vitest run 2>&1
 
       - name: Upload backend coverage
         uses: actions/upload-artifact@v4
