@@ -13,6 +13,7 @@ COPY package.json package-lock.json ./
 RUN npm ci && npm cache clean --force
 COPY . .
 RUN npm run build
+RUN cp -r src/db/migrations dist/migrations
 RUN npm prune --omit=dev && rm -rf src/ tests/
 USER appuser
 EXPOSE 4000
