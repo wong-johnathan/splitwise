@@ -1,0 +1,56 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: spliteasy
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-spliteasy_dev}
+      POSTGRES_DB: spliteasy
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U spliteasy"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    image: wongjohnathanwh741/splitwise-backend:latest
+    build:
+      context: ./backend
+      target: prod
+    ports:
+      - "4000:4000"
+    environment:
+      DATABASE_URL: postgres://spliteasy:${POSTGRES_PASSWORD:-spliteasy_dev}@postgres:5432/spliteasy
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    image: wongjohnathanwh741/splitwise-frontend:latest
+    build:
+      context: ./frontend
+      target: prod
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  pgdata:

@@ -241,12 +241,18 @@ Every push to `main` or any PR triggers the CI pipeline:
 │     ├── backend: npm run build       │
 │     └── frontend: npm run build      │
 ├──────────────────────────────────────┤
-│  4. Playwright E2E                   │
+│  5. Playwright E2E                   │
 │     ├── Start docker compose         │
 │     ├── Seed database                │
 │     └── npx playwright test          │
 ├──────────────────────────────────────┤
-│  5. Report                           │
+│  6. DockerHub Publish (main only)    │
+│     ├── docker buildx backend:prod   │
+│     ├── docker buildx frontend:prod  │
+│     ├── Push :latest + :sha tags     │
+│     └── Multi-stage, cache-optimised │
+├──────────────────────────────────────┤
+│  7. Report                           │
 │     ├── Coverage reports (Codecov)   │
 │     └── Playwright HTML report       │
 └──────────────────────────────────────┘
