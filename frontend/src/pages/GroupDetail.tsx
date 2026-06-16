@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState, useCallback } from 'react';
 import { api } from '@/api/client';
+import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Navbar from '@/components/layout/Navbar';
@@ -52,6 +53,7 @@ interface Debt {
 export default function GroupDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [group, setGroup] = useState<any>(null);
   const [members, setMembers] = useState<Member[]>([]);
@@ -60,8 +62,10 @@ export default function GroupDetail() {
   const [debts, setDebts] = useState<Debt[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddMember, setShowAddMember] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const groupId = parseInt(id || '0');
+  const userId = user?.id;
 
   const loadData = useCallback(() => {
     if (!groupId) return;
@@ -81,6 +85,34 @@ export default function GroupDetail() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const handleDeleteExpense = async (expenseId: number) => {
+    if (!window.confirm('Delete this expense? This cannot be undone.')) return;
+    setDeletingId(expenseId);
+    try {
+      await api.deleteExpense(expenseId);
+      loadData();
+    } catch (err) {
+      console.error('Delete expense error:', err);
+      alert('Failed to delete expense. You may not be the payer.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleDeletePayment = async (paymentId: number) => {
+    if (!window.confirm('Delete this settlement? This cannot be undone.')) return;
+    setDeletingId(paymentId);
+    try {
+      await api.deletePayment(paymentId);
+      loadData();
+    } catch (err) {
+      console.error('Delete payment error:', err);
+      alert('Failed to delete settlement.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -190,15 +222,15 @@ export default function GroupDetail() {
           </CardContent>
         </Card>
 
-        {/* Expenses */}
+        {/* Expenses & Settlements */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Expenses</CardTitle>
+            <CardTitle className="text-lg">Transaction History</CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
             {expenses.length === 0 ? (
               <EmptyState
-                title="No expenses yet"
+                title="No transactions yet"
                 description="Add your first expense to start tracking!"
                 action={
                   <Button onClick={() => navigate(`/groups/${groupId}/expenses/new`)}>
@@ -231,7 +263,17 @@ export default function GroupDetail() {
                           )}
                           <p className="text-sm text-gray-400">{formatDate(expense.expense_date)}</p>
                         </div>
-                        <span className="font-bold text-lg text-green-700">{formatCurrency(expense.amount)}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-lg text-green-700">{formatCurrency(expense.amount)}</span>
+                          <button
+                            onClick={() => handleDeletePayment(expense.id)}
+                            disabled={deletingId === expense.id}
+                            className="text-xs text-gray-400 hover:text-red-600 underline"
+                            title="Delete settlement"
+                          >
+                            {deletingId === expense.id ? '...' : 'delete'}
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       <div className="flex items-start gap-2">
@@ -250,6 +292,16 @@ export default function GroupDetail() {
                           >
                             edit
                           </button>
+                          {userId === expense.paid_by && (
+                            <button
+                              onClick={() => handleDeleteExpense(expense.id)}
+                              disabled={deletingId === expense.id}
+                              className="text-xs text-gray-400 hover:text-red-600 underline"
+                              title="Delete expense"
+                            >
+                              {deletingId === expense.id ? '...' : 'delete'}
+                            </button>
+                          )}
                         </div>
                       </div>
                     )}

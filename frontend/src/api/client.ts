@@ -110,4 +110,7 @@ export const api = {
 
   createPayment: (data: { groupId: number; fromUser?: number; toUser: number; amount: number; note?: string; date?: string }) =>
     request<{ payment: any }>('/api/payments', { method: 'POST', body: JSON.stringify(data) }),
+
+  deletePayment: (id: number) =>
+    request<{ message: string }>(`/api/payments/${id}`, { method: 'DELETE' }),
 };
