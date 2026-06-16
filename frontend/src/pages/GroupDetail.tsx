@@ -135,17 +135,17 @@ export default function GroupDetail() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <main className="max-w-4xl mx-auto px-4 py-6">
+      <main className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div>
-            <h2 className="text-2xl font-bold">{group.name}</h2>
-            <p className="text-sm text-gray-500">
+            <h2 className="text-xl sm:text-2xl font-bold">{group.name}</h2>
+            <p className="text-xs sm:text-sm text-gray-500">
               {members.length} member{members.length !== 1 ? 's' : ''}
               {group.description && ` · ${group.description}`}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="action-row">
             <Button onClick={() => navigate(`/groups/${groupId}/expenses/new`)}>
               Add Expense
             </Button>

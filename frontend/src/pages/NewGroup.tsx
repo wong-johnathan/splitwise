@@ -80,10 +80,10 @@ export default function NewGroup() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <main className="max-w-2xl mx-auto px-4 py-8">
+      <main className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
         <Card>
           <CardHeader>
-            <CardTitle>Create New Group</CardTitle>
+            <CardTitle>Create Group</CardTitle>
             <CardDescription>
               Start a group to split expenses with friends, roommates, or travel buddies.
             </CardDescription>

@@ -45,10 +45,10 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
-      <main className="max-w-4xl mx-auto px-4 py-6">
+      <main className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         {/* Total balance card */}
         <Card className="mb-6">
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <p className="text-sm text-gray-500 mb-1">Total Balance</p>
             <p
               className={`text-3xl font-bold ${
@@ -66,9 +66,9 @@ export default function Dashboard() {
         </Card>
 
         {/* Groups header */}
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">Your Groups</h2>
-          <Button onClick={() => navigate('/groups/new')}>New Group</Button>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <h2 className="text-lg sm:text-xl font-bold">Your Groups</h2>
+          <Button onClick={() => navigate('/groups/new')} className="w-full sm:w-auto">New Group</Button>
         </div>
 
         {/* Group list */}

@@ -195,7 +195,7 @@ export default function EditExpense() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <main className="max-w-2xl mx-auto px-4 py-8">
+      <main className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
         <Card>
           <CardHeader>
             <CardTitle>Edit Expense</CardTitle>

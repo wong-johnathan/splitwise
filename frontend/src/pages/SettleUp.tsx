@@ -147,11 +147,11 @@ export default function SettleUp() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <main className="max-w-2xl mx-auto px-4 py-6">
-        <div className="flex items-center justify-between mb-6">
+      <main className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div>
-            <h2 className="text-2xl font-bold">Settle Up</h2>
-            <p className="text-sm text-gray-500">{groupName}</p>
+            <h2 className="text-xl sm:text-2xl font-bold">Settle Up</h2>
+            <p className="text-xs sm:text-sm text-gray-500">{groupName}</p>
           </div>
           <Button variant="outline" onClick={() => navigate(`/groups/${groupId}`)}>
             Back to Group
