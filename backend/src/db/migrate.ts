@@ -67,4 +67,18 @@ export async function runMigrations() {
     console.error('❌ Migration failed:', err);
     throw err;
   }
+
+  // ✅ Expense date → TIMESTAMPTZ so users can enter precise datetime
+  try {
+    const dateTypeCheck = await pool.query(`
+      SELECT data_type FROM information_schema.columns
+      WHERE table_name = 'expenses' AND column_name = 'expense_date'
+    `);
+    if (dateTypeCheck.rows.length > 0 && dateTypeCheck.rows[0].data_type === 'date') {
+      await pool.query('ALTER TABLE expenses ALTER COLUMN expense_date TYPE TIMESTAMPTZ USING expense_date::timestamptz');
+      console.log("✅ Changed expense_date from DATE to TIMESTAMPTZ");
+    }
+  } catch (err) {
+    console.error('❌ expense_date migration failed:', err);
+  }
 }

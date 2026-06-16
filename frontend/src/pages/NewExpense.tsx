@@ -32,6 +32,7 @@ export default function NewExpense() {
   const [checkedMembers, setCheckedMembers] = useState<Set<number>>(new Set());
   const [customSplits, setCustomSplits] = useState<Record<number, string>>({});
   const [percentSplits, setPercentSplits] = useState<Record<number, string>>({});
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 16));
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -125,6 +126,7 @@ export default function NewExpense() {
         splitMethod,
         paidBy,
         memberIds: [...checkedMembers],
+        date,
       };
 
       if (splitMethod === 'custom') {
@@ -237,6 +239,16 @@ export default function NewExpense() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Date & Time</Label>
+                <Input
+                  type="datetime-local"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                />
+                <p className="text-xs text-gray-400">Defaults to now if left as-is</p>
               </div>
 
               {/* Member selection */}

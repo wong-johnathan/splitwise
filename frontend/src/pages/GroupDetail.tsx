@@ -11,6 +11,7 @@ import AddMemberDialog from '@/components/AddMemberDialog';
 
 interface Expense {
   id: number;
+  type?: string;
   description: string;
   amount: number;
   paid_by: number;
@@ -18,6 +19,7 @@ interface Expense {
   split_method: string;
   expense_date: string;
   created_at: string;
+  note?: string;
   splits: {
     id: number;
     user_id: number;
@@ -208,9 +210,30 @@ export default function GroupDetail() {
               <div className="space-y-3">
                 {expenses.map((expense) => (
                   <div
-                    key={expense.id}
-                    className="border rounded-lg p-3 hover:bg-gray-50 transition-colors"
+                    key={`${expense.type || 'expense'}-${expense.id}`}
+                    className={`border rounded-lg p-3 transition-colors ${
+                      expense.type === 'payment'
+                        ? 'bg-green-50 border-green-200 hover:bg-green-100'
+                        : 'hover:bg-gray-50'
+                    }`}
                   >
+                    {expense.type === 'payment' ? (
+                      <div className="flex items-start gap-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium text-green-700 bg-green-100 px-1.5 py-0.5 rounded">
+                              Settlement
+                            </span>
+                            <p className="font-medium">{expense.description}</p>
+                          </div>
+                          {expense.note && (
+                            <p className="text-sm text-gray-500">{expense.note}</p>
+                          )}
+                          <p className="text-sm text-gray-400">{formatDate(expense.expense_date)}</p>
+                        </div>
+                        <span className="font-bold text-lg text-green-700">{formatCurrency(expense.amount)}</span>
+                      </div>
+                    ) : (
                       <div className="flex items-start gap-2">
                         <div className="flex-1">
                           <p className="font-medium">{expense.description}</p>
@@ -229,16 +252,19 @@ export default function GroupDetail() {
                           </button>
                         </div>
                       </div>
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {expense.splits.map((split) => (
-                        <span
-                          key={split.id}
-                          className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100"
-                        >
-                          {split.name}: {formatCurrency(split.amount)}
-                        </span>
-                      ))}
-                    </div>
+                    )}
+                    {expense.type !== 'payment' && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {expense.splits.map((split) => (
+                          <span
+                            key={split.id}
+                            className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100"
+                          >
+                            {split.name}: {formatCurrency(split.amount)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

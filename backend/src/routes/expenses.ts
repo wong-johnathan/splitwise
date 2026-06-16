@@ -95,7 +95,7 @@ router.post('/', async (req: AuthRequest, res) => {
   }
 });
 
-// GET /api/expenses?groupId=X — list expenses for a group
+// GET /api/expenses?groupId=X — list expenses + payments (full transaction history)
 router.get('/', async (req: AuthRequest, res) => {
   try {
     const groupId = parseInt(req.query.groupId as string);
@@ -103,7 +103,8 @@ router.get('/', async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'groupId query parameter is required' });
     }
 
-    const result = await query(
+    // Fetch expenses with splits
+    const expenseResult = await query(
       `SELECT e.*, u.name AS paid_by_name, u.email AS paid_by_email
        FROM expenses e
        JOIN users u ON u.id = e.paid_by
@@ -112,9 +113,8 @@ router.get('/', async (req: AuthRequest, res) => {
       [groupId]
     );
 
-    // Attach splits to each expense
     const expenses = await Promise.all(
-      result.rows.map(async (expense) => {
+      expenseResult.rows.map(async (expense) => {
         const splitsResult = await query(
           `SELECT es.*, u.name, u.email
            FROM expense_splits es
@@ -125,6 +125,7 @@ router.get('/', async (req: AuthRequest, res) => {
         );
         return {
           ...expense,
+          type: 'expense',
           amount: parseFloat(expense.amount),
           splits: splitsResult.rows.map((s: any) => ({
             ...s,
@@ -134,7 +135,42 @@ router.get('/', async (req: AuthRequest, res) => {
       })
     );
 
-    res.json({ expenses });
+    // Fetch payments (settle-ups) as transaction history too
+    const paymentResult = await query(
+      `SELECT p.*, fu.name AS from_name, tu.name AS to_name
+       FROM payments p
+       JOIN users fu ON fu.id = p.from_user
+       JOIN users tu ON tu.id = p.to_user
+       WHERE p.group_id = $1
+       ORDER BY p.date DESC, p.created_at DESC`,
+      [groupId]
+    );
+
+    const payments = paymentResult.rows.map((p: any) => ({
+      id: p.id,
+      group_id: p.group_id,
+      type: 'payment',
+      description: `${p.from_name} paid ${p.to_name}`,
+      paid_by: p.from_user,
+      paid_by_name: p.from_name,
+      amount: parseFloat(p.amount),
+      expense_date: p.date,
+      note: p.note,
+      splits: [
+        { user_id: p.from_user, name: p.from_name, amount: -parseFloat(p.amount) },
+        { user_id: p.to_user, name: p.to_name, amount: parseFloat(p.amount) },
+      ],
+    }));
+
+    // Merge and sort by date (newest first)
+    const all = [...expenses, ...payments].sort((a, b) => {
+      const dateA = new Date(a.expense_date || a.created_at).getTime();
+      const dateB = new Date(b.expense_date || b.created_at).getTime();
+      if (dateA !== dateB) return dateB - dateA;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+
+    res.json({ expenses: all });
   } catch (err) {
     console.error('List expenses error:', err);
     res.status(500).json({ error: 'Internal server error' });

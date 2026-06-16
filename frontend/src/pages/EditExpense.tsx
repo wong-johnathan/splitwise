@@ -37,6 +37,7 @@ export default function EditExpense() {
   const [checkedMembers, setCheckedMembers] = useState<Set<number>>(new Set());
   const [customSplits, setCustomSplits] = useState<Record<number, string>>({});
   const [percentSplits, setPercentSplits] = useState<Record<number, string>>({});
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 16));
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -57,6 +58,10 @@ export default function EditExpense() {
         setAmount(String(exp.amount));
         setPaidBy(exp.paid_by);
         setSplitMethod(exp.split_method || 'equal');
+        // Pre-populate datetime (slice to datetime-local format)
+        if (exp.expense_date) {
+          setDate(new Date(exp.expense_date).toISOString().slice(0, 16));
+        }
 
         // Determine which members were included in the split
         const splitUserIds = new Set(splits.map((s: any) => s.user_id));
@@ -132,6 +137,7 @@ export default function EditExpense() {
         splitMethod,
         paidBy,
         memberIds: [...checkedMembers],
+        date,
       };
 
       if (splitMethod === 'custom') {
@@ -244,6 +250,16 @@ export default function EditExpense() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Date & Time</Label>
+                <Input
+                  type="datetime-local"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                />
+                <p className="text-xs text-gray-400">Defaults to now if left as-is</p>
               </div>
 
               {/* Member selection */}
