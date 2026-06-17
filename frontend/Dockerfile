@@ -1,6 +1,4 @@
 FROM node:20-alpine AS build
-ARG VITE_GOOGLE_CLIENT_ID
-ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
