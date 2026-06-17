@@ -28,8 +28,8 @@ services:
     build:
       context: ./backend
       target: prod
-    ports:
-      - "4000:4000"
+    # No ports exposed externally — frontend nginx proxies /api/ to this
+    # service over the internal Docker network. Access via single domain only.
     environment:
       DATABASE_URL: postgres://spliteasy:${POSTGRES_PASSWORD:-spliteasy_dev}@postgres:5432/spliteasy
       REDIS_URL: redis://redis:6379
