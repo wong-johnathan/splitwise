@@ -9,6 +9,7 @@ import GroupDetail from './pages/GroupDetail';
 import NewExpense from './pages/NewExpense';
 import EditExpense from './pages/EditExpense';
 import SettleUp from './pages/SettleUp';
+import EditSettlement from './pages/EditSettlement';
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
@@ -64,6 +65,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <SettleUp />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/groups/:groupId/payments/:paymentId/edit"
+              element={
+                <ProtectedRoute>
+                  <EditSettlement />
                 </ProtectedRoute>
               }
             />

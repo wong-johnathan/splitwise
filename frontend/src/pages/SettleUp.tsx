@@ -51,13 +51,6 @@ export default function SettleUp() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  // Edit payment state
-  const [editingPaymentId, setEditingPaymentId] = useState<number | null>(null);
-  const [editAmount, setEditAmount] = useState('');
-  const [editNote, setEditNote] = useState('');
-  const [editDate, setEditDate] = useState('');
-  const [editError, setEditError] = useState('');
-  const [editSubmitting, setEditSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const fetchData = () => {
@@ -141,51 +134,6 @@ export default function SettleUp() {
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const handleEditClick = (p: Payment) => {
-    setEditingPaymentId(p.id);
-    setEditAmount(p.amount.toFixed(2));
-    setEditNote(p.note || '');
-    setEditDate((p.date || p.created_at)?.slice(0, 16) || '');
-    setEditError('');
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editingPaymentId) return;
-    setEditError('');
-
-    const numAmount = parseFloat(editAmount);
-    if (isNaN(numAmount) || numAmount <= 0) {
-      setEditError('Please enter a valid amount');
-      return;
-    }
-
-    setEditSubmitting(true);
-    try {
-      await api.updatePayment(editingPaymentId, {
-        amount: numAmount,
-        note: editNote.trim() || undefined,
-        date: editDate || undefined,
-      });
-      setEditingPaymentId(null);
-      setEditAmount('');
-      setEditNote('');
-      setEditDate('');
-      fetchData();
-    } catch (err) {
-      setEditError(err instanceof ApiError ? err.message : 'Failed to update payment');
-    } finally {
-      setEditSubmitting(false);
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setEditingPaymentId(null);
-    setEditAmount('');
-    setEditNote('');
-    setEditDate('');
-    setEditError('');
   };
 
   const handleDeletePayment = async (paymentId: number) => {
@@ -400,7 +348,7 @@ export default function SettleUp() {
                       <div className="flex items-center gap-2">
                         <span className="font-bold">{formatCurrency(p.amount)}</span>
                         <button
-                          onClick={() => handleEditClick(p)}
+                          onClick={() => navigate(`/groups/${groupId}/payments/${p.id}/edit`)}
                           className="text-xs text-gray-400 hover:text-blue-600 underline"
                           title="Edit payment"
                         >
@@ -418,62 +366,6 @@ export default function SettleUp() {
                         )}
                       </div>
                     </div>
-                    {editingPaymentId === p.id && (
-                      <div className="mt-2 p-3 border border-blue-200 rounded-lg bg-blue-50">
-                        {editError && (
-                          <div className="mb-2 p-2 text-sm text-red-600 bg-red-50 rounded border border-red-200">
-                            {editError}
-                          </div>
-                        )}
-                        <div className="space-y-2">
-                          <div>
-                            <label className="text-xs font-medium">Amount ($)</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0.01"
-                              value={editAmount}
-                              onChange={(e) => setEditAmount(e.target.value)}
-                              className="w-full mt-1 px-2 py-1 text-sm border rounded"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-xs font-medium">Note</label>
-                            <input
-                              type="text"
-                              value={editNote}
-                              onChange={(e) => setEditNote(e.target.value)}
-                              className="w-full mt-1 px-2 py-1 text-sm border rounded"
-                              placeholder="Optional"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-xs font-medium">Date/Time</label>
-                            <input
-                              type="datetime-local"
-                              value={editDate}
-                              onChange={(e) => setEditDate(e.target.value)}
-                              className="w-full mt-1 px-2 py-1 text-sm border rounded"
-                            />
-                          </div>
-                          <div className="flex gap-2 pt-1">
-                            <button
-                              onClick={handleSaveEdit}
-                              disabled={editSubmitting}
-                              className="px-3 py-1 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                            >
-                              {editSubmitting ? 'Saving...' : 'Save'}
-                            </button>
-                            <button
-                              onClick={handleCancelEdit}
-                              className="px-3 py-1 text-xs font-medium border rounded hover:bg-gray-100"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
