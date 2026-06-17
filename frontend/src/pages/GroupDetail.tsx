@@ -13,6 +13,7 @@ import { Pencil, Trash2 } from 'lucide-react';
 import AddMemberDialog from '@/components/AddMemberDialog';
 import ActivityFeed from '@/components/ActivityFeed';
 import SpendingBreakdown from '@/components/SpendingBreakdown';
+import CollapsibleCard from '@/components/CollapsibleCard';
 
 interface Expense {
   id: number;
@@ -197,73 +198,63 @@ export default function GroupDetail() {
         </div>
 
         {/* Balances */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="text-lg">Balances</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="space-y-2">
-              {balances.map((b) => (
-                <div key={b.userId} className="flex justify-between items-center">
-                  <span className="text-sm">{b.name}</span>
-                  <span
-                    className={`font-medium text-sm ${
-                      b.balance > 0
-                        ? 'text-green-600'
-                        : b.balance < 0
-                          ? 'text-red-600'
-                          : 'text-gray-500'
-                    }`}
-                  >
-                    {b.balance > 0 ? 'is owed ' : b.balance < 0 ? 'owes ' : 'settled up'}
-                    {b.balance !== 0 && formatCurrency(Math.abs(b.balance))}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <CollapsibleCard title="Balances" storageKey="balances" defaultOpen={true}>
+          <div className="space-y-2">
+            {balances.map((b) => (
+              <div key={b.userId} className="flex justify-between items-center">
+                <span className="text-sm">{b.name}</span>
+                <span
+                  className={`font-medium text-sm ${
+                    b.balance > 0
+                      ? 'text-green-600'
+                      : b.balance < 0
+                        ? 'text-red-600'
+                        : 'text-gray-500'
+                  }`}
+                >
+                  {b.balance > 0 ? 'is owed ' : b.balance < 0 ? 'owes ' : 'settled up'}
+                  {b.balance !== 0 && formatCurrency(Math.abs(b.balance))}
+                </span>
+              </div>
+            ))}
+          </div>
+        </CollapsibleCard>
 
         {/* Spending Breakdown */}
         {expenses.filter(e => e.type !== 'payment').length > 0 && (
-          <SpendingBreakdown expenses={expenses} members={members} />
+          <CollapsibleCard title="Spending Breakdown" storageKey="spending_breakdown" defaultOpen={true}>
+            <SpendingBreakdown expenses={expenses} members={members} />
+          </CollapsibleCard>
         )}
 
         {/* Simplified debts */}
         {debts.length > 0 && (
-          <Card className="mb-6 bg-blue-50 border-blue-200">
-            <CardContent className="p-4">
-              <p className="text-sm font-medium text-blue-800 mb-2">Who owes whom:</p>
-              <div className="space-y-1">
-                {debts.map((d, i) => (
-                  <p key={i} className="text-sm text-blue-700">
-                    {d.fromUserName} owes <strong>{formatCurrency(d.amount)}</strong> to{' '}
-                    {d.toUserName}
-                  </p>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <CollapsibleCard title="Who Owes Whom" storageKey="debts" defaultOpen={true}>
+            <p className="text-sm font-medium text-blue-800 mb-2">Simplified debts:</p>
+            <div className="space-y-1">
+              {debts.map((d, i) => (
+                <p key={i} className="text-sm text-blue-700">
+                  {d.fromUserName} owes <strong>{formatCurrency(d.amount)}</strong> to{' '}
+                  {d.toUserName}
+                </p>
+              ))}
+            </div>
+          </CollapsibleCard>
         )}
 
         {/* Members */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="text-lg">Members</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="flex flex-wrap gap-2">
-              {members.map((m) => (
-                <span
-                  key={m.id}
-                  className="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 text-sm"
-                >
-                  {m.name}
-                </span>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <CollapsibleCard title="Members" storageKey="members" defaultOpen={true}>
+          <div className="flex flex-wrap gap-2">
+            {members.map((m) => (
+              <span
+                key={m.id}
+                className="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 text-sm"
+              >
+                {m.name}
+              </span>
+            ))}
+          </div>
+        </CollapsibleCard>
 
         {/* Expenses & Settlements */}
         <Card className="mb-6">

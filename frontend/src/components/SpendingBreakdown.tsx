@@ -3,7 +3,6 @@ import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { formatCurrency } from '@/lib/utils';
 
@@ -154,89 +153,86 @@ export default function SpendingBreakdown({ expenses, members }: Props) {
   };
 
   return (
-    <Card className="mb-6">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">Spending Breakdown</CardTitle>
-          <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
-            <button
-              onClick={() => setView('category')}
-              className={`px-3 py-1.5 font-medium transition-colors ${
-                view === 'category'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              By Category
-            </button>
-            <button
-              onClick={() => setView('person')}
-              className={`px-3 py-1.5 font-medium transition-colors ${
-                view === 'person'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-white text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              By Person
-            </button>
-          </div>
+    <div>
+      {/* Toggle */}
+      <div className="flex items-center justify-end mb-4">
+        <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
+          <button
+            onClick={() => setView('category')}
+            className={`px-3 py-1.5 font-medium transition-colors ${
+              view === 'category'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            By Category
+          </button>
+          <button
+            onClick={() => setView('person')}
+            className={`px-3 py-1.5 font-medium transition-colors ${
+              view === 'person'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            By Person
+          </button>
         </div>
-      </CardHeader>
-      <CardContent>
-        {view === 'category' ? (
-          categoryData.length > 0 ? (
-            <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
-              <ResponsiveContainer width="100%" height={280}>
-                <PieChart>
-                  <Pie
-                    data={categoryData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    dataKey="value"
-                    paddingAngle={2}
-                  >
-                    {categoryData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<CustomPieTooltip />} />
-                  <Legend content={renderPieLegend} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <EmptyState title="No category data" />
-          )
-        ) : personData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={Math.max(200, personData.length * 50)}>
-            <BarChart
-              data={personData}
-              layout="vertical"
-              margin={{ top: 5, right: 40, left: 0, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-              <XAxis type="number" tickFormatter={(v) => `$${v}`} />
-              <YAxis
-                type="category"
-                dataKey="name"
-                width={100}
-                tick={{ fontSize: 13 }}
-                tickFormatter={(v) => v.length > 15 ? `${v.slice(0, 15)}...` : v}
-              />
-              <Tooltip content={<CustomBarTooltip />} />
-              <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                {personData.map((entry, index) => (
-                  <Cell key={`bar-${index}`} fill={entry.fill} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+      </div>
+
+      {view === 'category' ? (
+        categoryData.length > 0 ? (
+          <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
+            <ResponsiveContainer width="100%" height={280}>
+              <PieChart>
+                <Pie
+                  data={categoryData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={100}
+                  dataKey="value"
+                  paddingAngle={2}
+                >
+                  {categoryData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip content={<CustomPieTooltip />} />
+                <Legend content={renderPieLegend} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
         ) : (
-          <EmptyState title="No person data" />
-        )}
-      </CardContent>
-    </Card>
+          <EmptyState title="No category data" />
+        )
+      ) : personData.length > 0 ? (
+        <ResponsiveContainer width="100%" height={Math.max(200, personData.length * 50)}>
+          <BarChart
+            data={personData}
+            layout="vertical"
+            margin={{ top: 5, right: 40, left: 0, bottom: 5 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+            <XAxis type="number" tickFormatter={(v) => `$${v}`} />
+            <YAxis
+              type="category"
+              dataKey="name"
+              width={100}
+              tick={{ fontSize: 13 }}
+              tickFormatter={(v) => v.length > 15 ? `${v.slice(0, 15)}...` : v}
+            />
+            <Tooltip content={<CustomBarTooltip />} />
+            <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+              {personData.map((entry, index) => (
+                <Cell key={`bar-${index}`} fill={entry.fill} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      ) : (
+        <EmptyState title="No person data" />
+      )}
+    </div>
   );
 }
