@@ -28,12 +28,11 @@ services:
     build:
       context: ./backend
       target: prod
-    # No ports exposed externally — frontend nginx proxies /api/ to this
-    # service over the internal Docker network. Access via single domain only.
     environment:
       DATABASE_URL: postgres://spliteasy:${POSTGRES_PASSWORD:-spliteasy_dev}@postgres:5432/spliteasy
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
     depends_on:
       postgres:
         condition: service_healthy
@@ -46,6 +45,8 @@ services:
     build:
       context: ./frontend
       target: prod
+      args:
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID}
     ports:
       - "80:80"
     depends_on:

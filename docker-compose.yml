@@ -36,6 +36,7 @@ services:
       DATABASE_URL: postgres://spliteasy:spliteasy_dev@postgres:5432/spliteasy
       REDIS_URL: redis://redis:6379
       JWT_SECRET: dev-secret-do-not-use-in-production
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
     volumes:
       - ./backend/src:/app/src
       - ./backend/package.json:/app/package.json
@@ -49,6 +50,8 @@ services:
     build: ./frontend
     ports:
       - "5173:5173"
+    environment:
+      VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
     volumes:
       - ./frontend/src:/app/src
       - ./frontend/package.json:/app/package.json

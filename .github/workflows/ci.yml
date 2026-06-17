@@ -283,5 +283,7 @@ jobs:
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/splitwise-frontend:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/splitwise-frontend:${{ github.sha }}
+          build-args: |
+            VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
