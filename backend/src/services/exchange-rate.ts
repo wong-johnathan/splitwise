@@ -14,8 +14,8 @@ async function fetchRates(base: string): Promise<Record<string, number>> {
   const url = `${FRANKFURTER_API}/latest?base=${base}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Frankfurter API error: ${res.status}`);
-  const data = await res.json();
-  return data.rates as Record<string, number>;
+  const data: { rates: Record<string, number> } = await res.json() as { rates: Record<string, number> };
+  return data.rates;
 }
 
 /** Upsert a single rate into cached_rates */
