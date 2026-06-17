@@ -10,6 +10,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { EmptyState } from '@/components/ui/empty-state';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 import AddMemberDialog from '@/components/AddMemberDialog';
+import ActivityFeed from '@/components/ActivityFeed';
 
 interface Expense {
   id: number;
@@ -68,6 +69,7 @@ export default function GroupDetail() {
   const [loading, setLoading] = useState(true);
   const [showAddMember, setShowAddMember] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [activityLogs, setActivityLogs] = useState<any[]>([]);
 
   const groupId = parseInt(id || '0');
   const userId = user?.id;
@@ -86,6 +88,7 @@ export default function GroupDetail() {
         setExpenses(expenseData.expenses);
       })
       .catch(console.error);
+    api.getActivityLogs(groupId).then(data => setActivityLogs(data.activityLogs)).catch(console.error);
   }, [groupId]));
 
   const loadData = useCallback(() => {
@@ -101,6 +104,7 @@ export default function GroupDetail() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
+    api.getActivityLogs(groupId).then(data => setActivityLogs(data.activityLogs)).catch(console.error);
   }, [groupId]);
 
   useEffect(() => {
@@ -377,6 +381,8 @@ export default function GroupDetail() {
             )}
           </CardContent>
         </Card>
+
+        <ActivityFeed logs={activityLogs} />
 
         {/* Delete group */}
         <div className="mt-8 text-center">

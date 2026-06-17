@@ -117,6 +117,10 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  // Activity Logs
+  getActivityLogs: (groupId: number) =>
+    request<{ activityLogs: any[] }>(`/api/activity-logs?groupId=${groupId}`),
+
   // Categories
   getCategories: (groupId: number) =>
     request<{ categories: any[] }>(`/api/categories?groupId=${groupId}`),

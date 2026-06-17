@@ -166,4 +166,30 @@ export async function runMigrations() {
   } catch (err) {
     console.error('❌ payments.date migration failed:', err);
   }
+
+  // ✅ Activity logs migration (004)
+  try {
+    const activityLogsCheck = await pool.query(`
+      SELECT 1 FROM information_schema.tables WHERE table_name = 'activity_logs'
+    `);
+    if (activityLogsCheck.rows.length === 0) {
+      const possiblePaths = [
+        path.resolve(__dirname, '../migrations/004_activity_logs.sql'),
+        path.resolve(__dirname, '../db/migrations/004_activity_logs.sql'),
+        path.resolve(__dirname, '../../src/db/migrations/004_activity_logs.sql'),
+        path.resolve(__dirname, '../src/db/migrations/004_activity_logs.sql'),
+      ];
+      let sqlPath: string | null = null;
+      for (const p of possiblePaths) {
+        if (fs.existsSync(p)) { sqlPath = p; break; }
+      }
+      if (sqlPath) {
+        const sql = fs.readFileSync(sqlPath, 'utf-8');
+        await pool.query(sql);
+        console.log('✅ Activity logs migration complete');
+      }
+    }
+  } catch (err) {
+    console.error('❌ Activity logs migration failed:', err);
+  }
 }

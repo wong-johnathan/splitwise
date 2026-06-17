@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { query, pool } from '../db/pool';
 import { requireAuth, AuthRequest } from '../middleware/auth';
 import { broadcastToGroup } from '../services/websocket';
+import { logActivity } from '../services/activity-log';
 
 const router = Router();
 router.use(requireAuth);
@@ -93,6 +94,17 @@ router.post('/', async (req: AuthRequest, res) => {
 
     // Broadcast real-time update
     broadcastToGroup(groupId, { type: 'expense_created', data: { expenseId } });
+
+    // Log activity
+    const splitDesc = splitMethod === 'equal'
+      ? `split equally among ${Array.isArray(memberIds) ? memberIds.length : 'all'}`
+      : splitMethod === 'custom' ? 'split custom' : 'split by percentage';
+    logActivity({
+      groupId, actorId: req.userId!, actionType: 'created', entityType: 'expense',
+      entityId: expenseId,
+      description: `created "${description}" ($${numAmount.toFixed(2)}, ${splitDesc})`,
+      metadata: { description, amount: numAmount, splitMethod, paidBy: payerId },
+    }).catch(console.error);
   } catch (err) {
     console.error('Create expense error:', err);
     res.status(500).json({ error: 'Internal server error' });
@@ -354,6 +366,23 @@ router.put('/:id', async (req: AuthRequest, res) => {
 
       // Broadcast real-time update
       broadcastToGroup(groupId, { type: 'expense_updated', data: { expenseId } });
+
+      // Log activity
+      const oldExpense = existing.rows[0];
+      const oldAmount = parseFloat(oldExpense.amount);
+      const descParts: string[] = [];
+      if (oldExpense.description !== description) descParts.push(`"${oldExpense.description}" → "${description}"`);
+      if (Math.abs(oldAmount - numAmount) > 0.001) descParts.push(`$${oldAmount.toFixed(2)} → $${numAmount.toFixed(2)}`);
+      const updateDesc = descParts.length > 0 ? `updated ${descParts.join(', ')}` : `updated "${description}"`;
+      logActivity({
+        groupId, actorId: req.userId!, actionType: 'updated', entityType: 'expense',
+        entityId: expenseId,
+        description: updateDesc,
+        metadata: {
+          old: { description: oldExpense.description, amount: oldAmount, splitMethod: oldExpense.split_method, paidBy: oldExpense.paid_by },
+          new: { description, amount: numAmount, splitMethod, paidBy: payerId },
+        },
+      }).catch(console.error);
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;
@@ -381,6 +410,13 @@ router.delete('/:id', async (req: AuthRequest, res) => {
     }
     const groupId = getGroup.rows[0].group_id;
 
+    // Fetch full expense data for activity logging
+    const expenseData = await query('SELECT * FROM expenses WHERE id = $1', [expenseId]);
+    if (expenseData.rows.length === 0) {
+      return res.status(404).json({ error: 'Expense not found' });
+    }
+    const expense = expenseData.rows[0];
+
     const result = await query(
       'DELETE FROM expenses WHERE id = $1 AND paid_by = $2 RETURNING id',
       [expenseId, req.userId]
@@ -394,6 +430,15 @@ router.delete('/:id', async (req: AuthRequest, res) => {
 
     // Broadcast real-time update
     broadcastToGroup(groupId, { type: 'expense_deleted', data: { expenseId } });
+
+    // Log activity
+    const expAmount = parseFloat(expense.amount);
+    logActivity({
+      groupId: expense.group_id, actorId: req.userId!, actionType: 'deleted',
+      entityType: 'expense', entityId: expenseId,
+      description: `deleted "${expense.description}" ($${expAmount.toFixed(2)})`,
+      metadata: { description: expense.description, amount: expAmount },
+    }).catch(console.error);
   } catch (err) {
     console.error('Delete expense error:', err);
     res.status(500).json({ error: 'Internal server error' });

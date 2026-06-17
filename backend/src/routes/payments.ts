@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { query } from '../db/pool';
 import { requireAuth, AuthRequest } from '../middleware/auth';
 import { broadcastToGroup } from '../services/websocket';
+import { logActivity } from '../services/activity-log';
 
 const router = Router();
 router.use(requireAuth);
@@ -51,6 +52,14 @@ router.post('/', async (req: AuthRequest, res) => {
 
     // Broadcast real-time update
     broadcastToGroup(groupId, { type: 'payment_created', data: { paymentId: payment.id } });
+
+    // Log activity
+    logActivity({
+      groupId, actorId: req.userId!, actionType: 'created', entityType: 'payment',
+      entityId: payment.id,
+      description: `recorded a settlement ($${numAmount.toFixed(2)})`,
+      metadata: { fromUser: payer, toUser, amount: numAmount, note: note || null },
+    }).catch(console.error);
   } catch (err) {
     console.error('Create payment error:', err);
     res.status(500).json({ error: 'Internal server error' });
@@ -102,6 +111,13 @@ router.delete('/:id', async (req: AuthRequest, res) => {
     }
     const groupId = getGroup.rows[0].group_id;
 
+    // Fetch full payment data for activity logging
+    const paymentData = await query(
+      'SELECT p.*, fu.name AS from_name, tu.name AS to_name FROM payments p JOIN users fu ON fu.id = p.from_user JOIN users tu ON tu.id = p.to_user WHERE p.id = $1',
+      [paymentId]
+    );
+    const payment = paymentData.rows[0];
+
     const result = await query(
       'DELETE FROM payments WHERE id = $1 RETURNING id',
       [paymentId]
@@ -115,6 +131,14 @@ router.delete('/:id', async (req: AuthRequest, res) => {
 
     // Broadcast real-time update
     broadcastToGroup(groupId, { type: 'payment_deleted', data: { paymentId } });
+
+    // Log activity
+    logActivity({
+      groupId: payment.group_id, actorId: req.userId!, actionType: 'deleted',
+      entityType: 'payment', entityId: paymentId,
+      description: `deleted a settlement ($${parseFloat(payment.amount).toFixed(2)}) from ${payment.from_name} to ${payment.to_name}`,
+      metadata: { fromUser: payment.from_user, toUser: payment.to_user, amount: parseFloat(payment.amount) },
+    }).catch(console.error);
   } catch (err) {
     console.error('Delete payment error:', err);
     res.status(500).json({ error: 'Internal server error' });
@@ -164,6 +188,18 @@ router.put('/:id', async (req: AuthRequest, res) => {
 
     // Broadcast real-time update
     broadcastToGroup(payment.group_id, { type: 'payment_updated', data: { paymentId } });
+
+    // Log activity
+    const oldAmount = parseFloat(payment.amount);
+    const descParts: string[] = [];
+    if (Math.abs(oldAmount - numAmount) > 0.001) descParts.push(`amount $${oldAmount.toFixed(2)} → $${numAmount.toFixed(2)}`);
+    const updateDesc = descParts.length > 0 ? `updated a settlement (${descParts.join(', ')})` : 'updated a settlement';
+    logActivity({
+      groupId: payment.group_id, actorId: req.userId!, actionType: 'updated',
+      entityType: 'payment', entityId: paymentId,
+      description: updateDesc,
+      metadata: { old: { amount: parseFloat(payment.amount) }, new: { amount: numAmount } },
+    }).catch(console.error);
   } catch (err) {
     console.error('Update payment error:', err);
     res.status(500).json({ error: 'Internal server error' });
