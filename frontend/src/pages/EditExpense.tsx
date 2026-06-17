@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import Navbar from '@/components/layout/Navbar';
 import { LoadingSpinner } from '@/components/ui/loading';
 import { formatCurrency } from '@/lib/utils';
+import CategoryPicker from '@/components/CategoryPicker';
 
 interface Member {
   id: number;
@@ -51,8 +52,7 @@ export default function EditExpense() {
   // Category state
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryId, setCategoryId] = useState<number | ''>('');
-  const [showNewCategory, setShowNewCategory] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState('');
+  const [recentCategoryIds, setRecentCategoryIds] = useState<number[]>([]);
 
   useEffect(() => {
     if (!groupId || !expenseId) return;
@@ -128,19 +128,6 @@ export default function EditExpense() {
     if (!numAmount || checkedCount === 0) return [];
     const share = numAmount / checkedCount;
     return checkedList.map((m) => ({ name: m.name, amount: share }));
-  };
-
-  const handleAddCategory = async () => {
-    if (!newCategoryName.trim()) return;
-    try {
-      const res = await api.createCategory({ groupId, name: newCategoryName.trim() });
-      setCategories((prev) => [...prev, res.category]);
-      setCategoryId(res.category.id);
-      setNewCategoryName('');
-      setShowNewCategory(false);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to create category');
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -264,48 +251,23 @@ export default function EditExpense() {
                 />
               </div>
 
-              {/* Category selector */}
-              <div className="space-y-2">
-                <Label>Category</Label>
-                <div className="flex gap-2">
-                  <select
-                    className="flex-1 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    value={categoryId}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val === '__new__') {
-                        setShowNewCategory(true);
-                      } else {
-                        setCategoryId(val ? parseInt(val) : '');
-                      }
-                    }}
-                  >
-                    <option value="">No category</option>
-                    {categories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.icon ? `${cat.icon} ` : ''}{cat.name}
-                      </option>
-                    ))}
-                    <option value="__new__">+ Add new category...</option>
-                  </select>
-                </div>
-                {showNewCategory && (
-                  <div className="flex gap-2 items-center">
-                    <Input
-                      placeholder="Category name"
-                      value={newCategoryName}
-                      onChange={(e) => setNewCategoryName(e.target.value)}
-                      className="flex-1"
-                    />
-                    <Button type="button" size="sm" onClick={handleAddCategory} disabled={!newCategoryName.trim()}>
-                      Add
-                    </Button>
-                    <Button type="button" size="sm" variant="outline" onClick={() => { setShowNewCategory(false); setNewCategoryName(''); }}>
-                      Cancel
-                    </Button>
-                  </div>
-                )}
-              </div>
+              {/* Category picker */}
+              <CategoryPicker
+                categories={categories}
+                selectedId={categoryId}
+                groupId={groupId}
+                onSelect={(id) => {
+                  setCategoryId(id);
+                  if (id) {
+                    setRecentCategoryIds((prev) => {
+                      const next = [id, ...prev.filter((pid) => pid !== id)];
+                      return next.slice(0, 20);
+                    });
+                  }
+                }}
+                onCategoriesChange={setCategories}
+                recentIds={recentCategoryIds}
+              />
 
               <div className="space-y-2">
                 <Label>Paid by *</Label>
