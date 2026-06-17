@@ -33,16 +33,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 export const api = {
   // Auth
-  register: (data: { email: string; name: string; password: string }) =>
-    request<{ user: any; token: string }>('/api/auth/register', {
+  googleLogin: (credential: string) =>
+    request<{ user: any; token: string }>('/api/auth/google', {
       method: 'POST',
-      body: JSON.stringify(data),
-    }),
-
-  login: (data: { email: string; password: string }) =>
-    request<{ user: any; token: string }>('/api/auth/login', {
-      method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify({ credential }),
     }),
 
   me: () => request<{ user: any }>('/api/auth/me'),
@@ -120,13 +114,4 @@ export const api = {
   // Categories
   getCategories: (groupId: number) =>
     request<{ categories: any[] }>(`/api/categories?groupId=${groupId}`),
-
-  createCategory: (data: { groupId: number; name: string; color?: string; icon?: string }) =>
-    request<{ category: any }>('/api/categories', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-
-  deleteCategory: (id: number) =>
-    request<{ message: string }>(`/api/categories/${id}`, { method: 'DELETE' }),
 };

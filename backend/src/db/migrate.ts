@@ -112,6 +112,33 @@ export async function runMigrations() {
     console.error('❌ Categories migration failed:', err);
   }
 
+  // ✅ Google OAuth migration (003)
+  try {
+    const googleIdCheck = await pool.query(`
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'users' AND column_name = 'google_id'
+    `);
+    if (googleIdCheck.rows.length === 0) {
+      const possiblePaths = [
+        path.resolve(__dirname, '../migrations/003_google_oauth.sql'),
+        path.resolve(__dirname, '../db/migrations/003_google_oauth.sql'),
+        path.resolve(__dirname, '../../src/db/migrations/003_google_oauth.sql'),
+        path.resolve(__dirname, '../src/db/migrations/003_google_oauth.sql'),
+      ];
+      let sqlPath: string | null = null;
+      for (const p of possiblePaths) {
+        if (fs.existsSync(p)) { sqlPath = p; break; }
+      }
+      if (sqlPath) {
+        const sql = fs.readFileSync(sqlPath, 'utf-8');
+        await pool.query(sql);
+        console.log('✅ Google OAuth migration complete');
+      }
+    }
+  } catch (err) {
+    console.error('❌ Google OAuth migration failed:', err);
+  }
+
   // ✅ Expense date → TIMESTAMPTZ so users can enter precise datetime
   try {
     const dateTypeCheck = await pool.query(`

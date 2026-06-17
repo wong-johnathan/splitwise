@@ -3,33 +3,25 @@ import { pool } from './pool';
 async function seed() {
   console.log('🌱 Seeding database...');
 
-  // Create demo users
-  const pw = '$2a$10$dummyhash'; // password: 'password123' (this will fail -- we hash properly)
-  // Actually, let's use bcryptjs properly
-  const bcrypt = await import('bcryptjs');
-  const passwordHash = await bcrypt.hash('password123', 10);
-
+  // Create demo users (no password — Google OAuth only)
   // Alice
   const alice = await pool.query(
-    `INSERT INTO users (email, name, password_hash) VALUES ('alice@test.com', 'Alice', $1)
+    `INSERT INTO users (email, name) VALUES ('alice@test.com', 'Alice')
      ON CONFLICT (email) DO UPDATE SET name = 'Alice' RETURNING id`,
-    [passwordHash]
   );
   const aliceId = alice.rows[0].id;
 
   // Bob
   const bob = await pool.query(
-    `INSERT INTO users (email, name, password_hash) VALUES ('bob@test.com', 'Bob', $1)
+    `INSERT INTO users (email, name) VALUES ('bob@test.com', 'Bob')
      ON CONFLICT (email) DO UPDATE SET name = 'Bob' RETURNING id`,
-    [passwordHash]
   );
   const bobId = bob.rows[0].id;
 
   // Charlie
   const charlie = await pool.query(
-    `INSERT INTO users (email, name, password_hash) VALUES ('charlie@test.com', 'Charlie', $1)
+    `INSERT INTO users (email, name) VALUES ('charlie@test.com', 'Charlie')
      ON CONFLICT (email) DO UPDATE SET name = 'Charlie' RETURNING id`,
-    [passwordHash]
   );
   const charlieId = charlie.rows[0].id;
 
@@ -46,7 +38,6 @@ async function seed() {
   if (group.rows.length > 0) {
     groupId = group.rows[0].id;
   } else {
-    // Group already exists, fetch it
     const existing = await pool.query("SELECT id FROM groups WHERE name = 'Trip to Bali'");
     groupId = existing.rows[0].id;
   }
@@ -59,8 +50,27 @@ async function seed() {
 
   console.log(`  Group: Trip to Bali (${groupId}) -- 3 members`);
 
+  // Seed default categories for the group
+  const defaultCategories = [
+    { name: 'Food', color: '#EF4444', icon: '🍽️' },
+    { name: 'Transport', color: '#3B82F6', icon: '🚗' },
+    { name: 'Hotel', color: '#8B5CF6', icon: '🏨' },
+    { name: 'Shopping', color: '#EC4899', icon: '🛍️' },
+    { name: 'Utilities', color: '#F59E0B', icon: '💡' },
+    { name: 'Entertainment', color: '#10B981', icon: '🎬' },
+    { name: 'Health', color: '#14B8A6', icon: '💊' },
+    { name: 'Other', color: '#6B7280', icon: '📦' },
+  ];
+  for (const cat of defaultCategories) {
+    await pool.query(
+      `INSERT INTO categories (group_id, name, color, icon)
+       VALUES ($1, $2, $3, $4) ON CONFLICT (group_id, name) DO NOTHING`,
+      [groupId, cat.name, cat.color, cat.icon]
+    );
+  }
+  console.log('  Categories: 8 defaults seeded');
+
   // Create expenses
-  // Expense 1: Dinner - Alice paid $60, split equally
   const exp1 = await pool.query(
     `INSERT INTO expenses (group_id, paid_by, description, amount, split_method, expense_date)
      VALUES ($1, $2, 'Dinner at beach club', 60, 'equal', '2025-06-10') RETURNING id`,
@@ -72,7 +82,6 @@ async function seed() {
     [exp1Id, aliceId, bobId, charlieId]
   );
 
-  // Expense 2: Taxi - Bob paid $30, split equally
   const exp2 = await pool.query(
     `INSERT INTO expenses (group_id, paid_by, description, amount, split_method, expense_date)
      VALUES ($1, $2, 'Taxi to airport', 30, 'equal', '2025-06-09') RETURNING id`,
@@ -84,7 +93,6 @@ async function seed() {
     [exp2Id, bobId, aliceId, charlieId]
   );
 
-  // Expense 3: Hotel - Charlie paid $150, split equally
   const exp3 = await pool.query(
     `INSERT INTO expenses (group_id, paid_by, description, amount, split_method, expense_date)
      VALUES ($1, $2, 'Hotel booking', 150, 'equal', '2025-06-11') RETURNING id`,
@@ -97,12 +105,13 @@ async function seed() {
   );
 
   console.log('  Expenses: Dinner ($60), Taxi ($30), Hotel ($150)');
+
   console.log('');
   console.log('✅ Seed completed!');
   console.log('');
-  console.log('📧 Login credentials (all users):');
-  console.log('   Email: alice@test.com / bob@test.com / charlie@test.com');
-  console.log('   Password: password123');
+  console.log('📧 Test users:');
+  console.log('   alice@test.com, bob@test.com, charlie@test.com');
+  console.log('   (log in with Google using the same email)');
 
   await pool.end();
 }

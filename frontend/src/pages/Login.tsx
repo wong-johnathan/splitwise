@@ -1,34 +1,28 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
 import { useAuth } from '@/hooks/use-auth';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ApiError } from '@/api/client';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [isRegister, setIsRegister] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, register } = useAuth();
+  const { googleLogin } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
+  const handleGoogleSuccess = async (response: CredentialResponse) => {
+    if (!response.credential) {
+      setError('No credential received from Google');
+      return;
+    }
     setLoading(true);
+    setError('');
     try {
-      if (isRegister) {
-        await register(email, name, password);
-      } else {
-        await login(email, password);
-      }
+      await googleLogin(response.credential);
       navigate('/dashboard');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'An error occurred');
+      setError(err instanceof ApiError ? err.message : 'Google sign-in failed');
     } finally {
       setLoading(false);
     }
@@ -41,66 +35,28 @@ export default function Login() {
           <CardTitle className="text-3xl font-bold">SplitEasy</CardTitle>
           <CardDescription>Split expenses with friends. Easily.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md border border-red-200">
-                {error}
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Email</label>
-              <Input
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+        <CardContent className="flex flex-col items-center gap-4">
+          {error && (
+            <div className="w-full p-3 text-sm text-red-600 bg-red-50 rounded-md border border-red-200 text-center">
+              {error}
             </div>
+          )}
 
-            {isRegister && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Name</label>
-                <Input
-                  placeholder="Your name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                />
-              </div>
-            )}
+          <div className="w-full flex justify-center">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => setError('Google sign-in failed. Please try again.')}
+              theme="outline"
+              size="large"
+              text="signin_with"
+              shape="rectangular"
+              width="300"
+            />
+          </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Password</label>
-              <Input
-                type="password"
-                placeholder="At least 6 characters"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-              />
-            </div>
-
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Please wait...' : isRegister ? 'Create Account' : 'Sign In'}
-            </Button>
-          </form>
-
-          <p className="text-center text-sm mt-4">
-            {isRegister ? 'Already have an account?' : "Don't have an account?"}{' '}
-            <button
-              onClick={() => {
-                setIsRegister(!isRegister);
-                setError('');
-              }}
-              className="text-blue-600 hover:underline font-medium"
-            >
-              {isRegister ? 'Sign in' : 'Register'}
-            </button>
-          </p>
+          {loading && (
+            <p className="text-sm text-gray-400">Signing in...</p>
+          )}
         </CardContent>
       </Card>
     </div>

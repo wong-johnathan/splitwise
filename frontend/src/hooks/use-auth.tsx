@@ -11,8 +11,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, name: string, password: string) => Promise<void>;
+  googleLogin: (credential: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -37,14 +36,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const res = await api.login({ email, password });
-    localStorage.setItem('token', res.token);
-    setUser(res.user);
-  }, []);
-
-  const register = useCallback(async (email: string, name: string, password: string) => {
-    const res = await api.register({ email, name, password });
+  const googleLogin = useCallback(async (credential: string) => {
+    const res = await api.googleLogin(credential);
     localStorage.setItem('token', res.token);
     setUser(res.user);
   }, []);
@@ -55,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, googleLogin, logout }}>
       {children}
     </AuthContext.Provider>
   );

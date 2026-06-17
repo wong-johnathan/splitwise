@@ -1,85 +1,69 @@
 import { Router } from 'express';
-import { z } from 'zod';
+import { OAuth2Client } from 'google-auth-library';
 import { query } from '../db/pool';
-import { hashPassword, comparePassword, signToken } from '../services/auth';
+import { signToken } from '../services/auth';
 import { requireAuth, AuthRequest } from '../middleware/auth';
+import { config } from '../config';
 
 const router = Router();
 
-const registerSchema = z.object({
-  email: z.string().email(),
-  name: z.string().min(1).max(100),
-  password: z.string().min(6).max(128),
-});
+const googleClient = new OAuth2Client(config.GOOGLE_CLIENT_ID);
 
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string(),
-});
-
-// POST /api/auth/register
-router.post('/register', async (req, res) => {
+// POST /api/auth/google — authenticate with Google ID token
+router.post('/google', async (req, res) => {
   try {
-    const { email, name, password } = registerSchema.parse(req.body);
+    const { credential } = req.body;
 
-    // Check if user exists
-    const existing = await query('SELECT id FROM users WHERE email = $1', [email]);
-    if (existing.rows.length > 0) {
-      return res.status(409).json({ error: 'Email already registered' });
+    if (!credential) {
+      return res.status(400).json({ error: 'Google credential is required' });
     }
 
-    const passwordHash = await hashPassword(password);
-    const result = await query(
-      'INSERT INTO users (email, name, password_hash) VALUES ($1, $2, $3) RETURNING id, email, name, created_at',
-      [email, name, passwordHash]
-    );
-
-    const user = result.rows[0];
-    const token = signToken(user.id);
-
-    res.status(201).json({ user, token });
-  } catch (err: any) {
-    if (err.name === 'ZodError') {
-      return res.status(400).json({ error: 'Validation error', details: err.errors });
-    }
-    console.error('Register error:', err);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// POST /api/auth/login
-router.post('/login', async (req, res) => {
-  try {
-    const { email, password } = loginSchema.parse(req.body);
-
-    const result = await query(
-      'SELECT id, email, name, password_hash, avatar_url FROM users WHERE email = $1',
-      [email]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'Invalid email or password' });
-    }
-
-    const user = result.rows[0];
-    const valid = await comparePassword(password, user.password_hash);
-
-    if (!valid) {
-      return res.status(401).json({ error: 'Invalid email or password' });
-    }
-
-    const token = signToken(user.id);
-
-    res.json({
-      user: { id: user.id, email: user.email, name: user.name, avatar_url: user.avatar_url },
-      token,
+    // Verify the Google ID token
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: config.GOOGLE_CLIENT_ID,
     });
-  } catch (err: any) {
-    if (err.name === 'ZodError') {
-      return res.status(400).json({ error: 'Validation error', details: err.errors });
+
+    const payload = ticket.getPayload();
+    if (!payload || !payload.sub || !payload.email) {
+      return res.status(400).json({ error: 'Invalid Google token' });
     }
-    console.error('Login error:', err);
-    res.status(500).json({ error: 'Internal server error' });
+
+    const googleId = payload.sub;
+    const email = payload.email;
+    const name = payload.name || email.split('@')[0];
+    const avatarUrl = payload.picture || null;
+
+    // Upsert user: find by google_id, or create new
+    let existing = await query('SELECT id, email, name, avatar_url FROM users WHERE google_id = $1', [googleId]);
+
+    let user;
+    if (existing.rows.length > 0) {
+      // Update name/avatar in case they changed
+      const updateResult = await query(
+        `UPDATE users SET name = $1, avatar_url = COALESCE($2, avatar_url), email = $3
+         WHERE google_id = $4 RETURNING id, email, name, avatar_url, created_at`,
+        [name, avatarUrl, email, googleId]
+      );
+      user = updateResult.rows[0];
+    } else {
+      // Create new user
+      const createResult = await query(
+        `INSERT INTO users (email, name, avatar_url, google_id)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (email) DO UPDATE SET google_id = $4, name = $2, avatar_url = COALESCE($3, users.avatar_url)
+         RETURNING id, email, name, avatar_url, created_at`,
+        [email, name, avatarUrl, googleId]
+      );
+      user = createResult.rows[0];
+    }
+
+    const token = signToken(user.id);
+
+    res.json({ user, token });
+  } catch (err: any) {
+    console.error('Google auth error:', err);
+    res.status(401).json({ error: 'Google authentication failed' });
   }
 });
 

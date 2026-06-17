@@ -5,6 +5,8 @@ const envSchema = z.object({
   REDIS_URL: z.string().default('redis://redis:6379'),
   JWT_SECRET: z.string().default('dev-secret-do-not-use-in-production'),
   PORT: z.coerce.number().default(4000),
+  GOOGLE_CLIENT_ID: z.string().default(''),
+  GOOGLE_CLIENT_SECRET: z.string().default(''),
 });
 
 const parsed = envSchema.safeParse(process.env);
