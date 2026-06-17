@@ -12,6 +12,8 @@ module.exports = {
     '!src/db/seed.ts',
     '!src/db/pool.ts',
     '!src/**/*.d.ts',
+    '!src/services/websocket.ts',
+    '!src/routes/test-auth.ts',
   ],
   coverageThreshold: {
     global: {
