@@ -5,6 +5,7 @@ type WsEvent =
   | { type: 'expense_updated'; data: { expenseId: number } }
   | { type: 'expense_deleted'; data: { expenseId: number } }
   | { type: 'payment_created'; data: { paymentId: number } }
+  | { type: 'payment_updated'; data: { paymentId: number } }
   | { type: 'payment_deleted'; data: { paymentId: number } };
 
 /**

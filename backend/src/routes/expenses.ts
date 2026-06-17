@@ -161,7 +161,10 @@ router.get('/', async (req: AuthRequest, res) => {
       paid_by_name: p.from_name,
       amount: parseFloat(p.amount),
       expense_date: p.date,
+      created_at: p.created_at,
       note: p.note,
+      from_user: p.from_user,
+      to_user: p.to_user,
       splits: [
         { user_id: p.from_user, name: p.from_name, amount: -parseFloat(p.amount) },
         { user_id: p.to_user, name: p.to_name, amount: parseFloat(p.amount) },

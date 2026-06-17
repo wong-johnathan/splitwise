@@ -121,4 +121,55 @@ router.delete('/:id', async (req: AuthRequest, res) => {
   }
 });
 
+// PUT /api/payments/:id — update a payment (amount, note, date)
+router.put('/:id', async (req: AuthRequest, res) => {
+  try {
+    const paymentId = parseInt(req.params.id);
+    if (isNaN(paymentId)) {
+      return res.status(400).json({ error: 'Invalid payment ID' });
+    }
+
+    const { amount, note, date } = req.body;
+
+    // Verify payment exists and user is involved
+    const existing = await query(
+      `SELECT * FROM payments WHERE id = $1`,
+      [paymentId]
+    );
+
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: 'Payment not found' });
+    }
+
+    const payment = existing.rows[0];
+    if (payment.from_user !== req.userId && payment.to_user !== req.userId) {
+      return res.status(403).json({ error: 'Only involved users can edit this payment' });
+    }
+
+    const numAmount = amount !== undefined ? parseFloat(amount) : payment.amount;
+    if (isNaN(numAmount) || numAmount <= 0) {
+      return res.status(400).json({ error: 'Amount must be a positive number' });
+    }
+
+    const updatedNote = note !== undefined ? (note || null) : payment.note;
+    const updatedDate = date || payment.date;
+
+    const result = await query(
+      `UPDATE payments SET amount = $1, note = $2, date = $3 WHERE id = $4 RETURNING *`,
+      [numAmount, updatedNote, updatedDate, paymentId]
+    );
+
+    const updated = result.rows[0];
+    updated.amount = parseFloat(updated.amount);
+
+    res.json({ payment: updated });
+
+    // Broadcast real-time update
+    broadcastToGroup(payment.group_id, { type: 'payment_updated', data: { paymentId } });
+  } catch (err) {
+    console.error('Update payment error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;

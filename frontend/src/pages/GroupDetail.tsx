@@ -69,6 +69,14 @@ export default function GroupDetail() {
   const [showAddMember, setShowAddMember] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
+  // Edit settlement state
+  const [editPaymentId, setEditPaymentId] = useState<number | null>(null);
+  const [editAmount, setEditAmount] = useState('');
+  const [editNote, setEditNote] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [editError, setEditError] = useState('');
+  const [editSubmitting, setEditSubmitting] = useState(false);
+
   const groupId = parseInt(id || '0');
   const userId = user?.id;
 
@@ -132,6 +140,24 @@ export default function GroupDetail() {
       alert('Failed to delete settlement.');
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleEditPaymentSave = async (paymentId: number) => {
+    setEditError('');
+    setEditSubmitting(true);
+    try {
+      await api.updatePayment(paymentId, {
+        amount: parseFloat(editAmount),
+        note: editNote,
+        date: editDate,
+      });
+      setEditPaymentId(null);
+      loadData();
+    } catch (err) {
+      setEditError('Failed to update settlement.');
+    } finally {
+      setEditSubmitting(false);
     }
   };
 
@@ -293,10 +319,23 @@ export default function GroupDetail() {
                           {expense.note && (
                             <p className="text-sm text-gray-500">{expense.note}</p>
                           )}
-                          <p className="text-sm text-gray-400">{formatDate(expense.expense_date)}</p>
+                          <p className="text-sm text-gray-400">{formatDate(expense.created_at)}</p>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-lg text-green-700">{formatCurrency(expense.amount)}</span>
+                          <button
+                            onClick={() => {
+                              setEditPaymentId(expense.id);
+                              setEditAmount(String(expense.amount));
+                              setEditNote(expense.note || '');
+                              setEditDate(expense.expense_date?.slice(0, 10) || '');
+                              setEditError('');
+                            }}
+                            className="text-xs text-gray-400 hover:text-blue-600 underline"
+                            title="Edit settlement"
+                          >
+                            edit
+                          </button>
                           <button
                             onClick={() => handleDeletePayment(expense.id)}
                             disabled={deletingId === expense.id}
@@ -349,6 +388,56 @@ export default function GroupDetail() {
                               {deletingId === expense.id ? '...' : 'delete'}
                             </button>
                           )}
+                        </div>
+                      </div>
+                    )}
+                    {expense.type === 'payment' && editPaymentId === expense.id && (
+                      <div className="mt-3 border border-blue-200 rounded-lg bg-blue-50 p-3 space-y-2">
+                        <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-col gap-1">
+                            <label className="text-xs text-gray-600">Amount</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={editAmount}
+                              onChange={(e) => setEditAmount(e.target.value)}
+                              className="border border-gray-300 rounded px-2 py-1 text-sm w-28"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1 flex-1">
+                            <label className="text-xs text-gray-600">Note</label>
+                            <input
+                              type="text"
+                              value={editNote}
+                              onChange={(e) => setEditNote(e.target.value)}
+                              className="border border-gray-300 rounded px-2 py-1 text-sm w-full"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <label className="text-xs text-gray-600">Date</label>
+                            <input
+                              type="date"
+                              value={editDate}
+                              onChange={(e) => setEditDate(e.target.value)}
+                              className="border border-gray-300 rounded px-2 py-1 text-sm"
+                            />
+                          </div>
+                        </div>
+                        {editError && <p className="text-xs text-red-600">{editError}</p>}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleEditPaymentSave(expense.id)}
+                            disabled={editSubmitting}
+                            className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 disabled:opacity-50"
+                          >
+                            {editSubmitting ? 'Saving...' : 'Save'}
+                          </button>
+                          <button
+                            onClick={() => setEditPaymentId(null)}
+                            className="text-xs text-gray-600 hover:text-gray-800 underline"
+                          >
+                            Cancel
+                          </button>
                         </div>
                       </div>
                     )}

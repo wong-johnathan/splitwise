@@ -111,6 +111,12 @@ export const api = {
   deletePayment: (id: number) =>
     request<{ message: string }>(`/api/payments/${id}`, { method: 'DELETE' }),
 
+  updatePayment: (id: number, data: { amount?: number; note?: string; date?: string }) =>
+    request<{ payment: any }>(`/api/payments/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
   // Categories
   getCategories: (groupId: number) =>
     request<{ categories: any[] }>(`/api/categories?groupId=${groupId}`),
