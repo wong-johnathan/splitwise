@@ -9,6 +9,7 @@ import Navbar from '@/components/layout/Navbar';
 import { LoadingSpinner } from '@/components/ui/loading';
 import { EmptyState } from '@/components/ui/empty-state';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
+import { Pencil, Trash2 } from 'lucide-react';
 import AddMemberDialog from '@/components/AddMemberDialog';
 import ActivityFeed from '@/components/ActivityFeed';
 
@@ -303,18 +304,18 @@ export default function GroupDetail() {
                           <span className="font-bold text-lg text-green-700 whitespace-nowrap">{formatCurrency(expense.amount)}</span>
                           <button
                             onClick={() => navigate(`/groups/${groupId}/payments/${expense.id}/edit`)}
-                            className="text-xs text-gray-400 hover:text-blue-600 underline"
+                            className="p-1 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50 transition-colors"
                             title="Edit settlement"
                           >
-                            edit
+                            <Pencil size={14} />
                           </button>
                           <button
                             onClick={() => handleDeletePayment(expense.id)}
                             disabled={deletingId === expense.id}
-                            className="text-xs text-gray-400 hover:text-red-600 underline"
+                            className="p-1 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors"
                             title="Delete settlement"
                           >
-                            {deletingId === expense.id ? '...' : 'delete'}
+                            {deletingId === expense.id ? <span className="text-xs">...</span> : <Trash2 size={14} />}
                           </button>
                         </div>
                       </div>
@@ -345,18 +346,18 @@ export default function GroupDetail() {
                           <span className="font-bold text-lg whitespace-nowrap">{formatCurrency(expense.amount)}</span>
                           <button
                             onClick={() => navigate(`/groups/${groupId}/expenses/${expense.id}/edit`)}
-                            className="text-xs text-gray-400 hover:text-blue-600 underline"
+                            className="p-1 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50 transition-colors"
                             title="Edit expense"
                           >
-                            edit
+                            <Pencil size={14} />
                           </button>
                           <button
                             onClick={() => handleDeleteExpense(expense.id)}
                             disabled={deletingId === expense.id}
-                            className="text-xs text-gray-400 hover:text-red-600 underline"
+                            className="p-1 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors"
                             title="Delete expense"
                           >
-                            {deletingId === expense.id ? '...' : 'delete'}
+                            {deletingId === expense.id ? <span className="text-xs">...</span> : <Trash2 size={14} />}
                           </button>
                         </div>
                       </div>

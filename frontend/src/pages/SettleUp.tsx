@@ -10,6 +10,7 @@ import Navbar from '@/components/layout/Navbar';
 import { LoadingSpinner } from '@/components/ui/loading';
 import { EmptyState } from '@/components/ui/empty-state';
 import { formatCurrency, formatDateTime, toLocalDatetimeString } from '@/lib/utils';
+import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
 
 interface Debt {
   fromUser: number;
@@ -349,18 +350,18 @@ export default function SettleUp() {
                         <span className="font-bold whitespace-nowrap">{formatCurrency(p.amount)}</span>
                         <button
                           onClick={() => navigate(`/groups/${groupId}/payments/${p.id}/edit`)}
-                          className="text-xs text-gray-400 hover:text-blue-600 underline"
+                          className="p-1 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50 transition-colors"
                           title="Edit payment"
                         >
-                          edit
+                          <Pencil size={14} />
                         </button>
                         <button
                           onClick={() => handleDeletePayment(p.id)}
                           disabled={deletingId === p.id}
-                          className="text-xs text-gray-400 hover:text-red-600 underline"
+                          className="p-1 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors"
                           title="Delete payment"
                         >
-                          {deletingId === p.id ? '...' : 'delete'}
+                          {deletingId === p.id ? <span className="text-xs">...</span> : <Trash2 size={14} />}
                         </button>
                       </div>
                     </div>
