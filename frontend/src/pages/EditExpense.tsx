@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Navbar from '@/components/layout/Navbar';
 import { LoadingSpinner } from '@/components/ui/loading';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, toLocalDatetimeString, toUtcIsoString } from '@/lib/utils';
 import CategoryPicker from '@/components/CategoryPicker';
 
 interface Member {
@@ -45,7 +45,7 @@ export default function EditExpense() {
   const [checkedMembers, setCheckedMembers] = useState<Set<number>>(new Set());
   const [customSplits, setCustomSplits] = useState<Record<number, string>>({});
   const [percentSplits, setPercentSplits] = useState<Record<number, string>>({});
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 16));
+  const [date, setDate] = useState(toLocalDatetimeString(new Date()));
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -78,7 +78,7 @@ export default function EditExpense() {
         }
         // Pre-populate datetime
         if (exp.expense_date) {
-          setDate(new Date(exp.expense_date).toISOString().slice(0, 16));
+          setDate(toLocalDatetimeString(new Date(exp.expense_date)));
         }
 
         // Determine which members were included in the split
@@ -149,13 +149,14 @@ export default function EditExpense() {
 
     setSubmitting(true);
     try {
+      const utcDate = toUtcIsoString(date);
       const payload: any = {
         description: description.trim(),
         amount: numAmount,
         splitMethod,
         paidBy,
         memberIds: [...checkedMembers],
-        date,
+        date: utcDate,
         categoryId: categoryId || undefined,
       };
 

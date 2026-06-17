@@ -9,6 +9,18 @@ export function formatCurrency(amount: number): string {
   return `$${Math.abs(amount).toFixed(2)}`;
 }
 
+export function toLocalDatetimeString(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return (
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+    `T${pad(date.getHours())}:${pad(date.getMinutes())}`
+  );
+}
+
+export function toUtcIsoString(localDatetime: string): string {
+  return new Date(localDatetime).toISOString();
+}
+
 export function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
   const formatted = d.toLocaleDateString('en-US', {

@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Navbar from '@/components/layout/Navbar';
 import { LoadingSpinner } from '@/components/ui/loading';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, toLocalDatetimeString, toUtcIsoString } from '@/lib/utils';
 import CategoryPicker from '@/components/CategoryPicker';
 
 interface Member {
@@ -40,7 +40,7 @@ export default function NewExpense() {
   const [checkedMembers, setCheckedMembers] = useState<Set<number>>(new Set());
   const [customSplits, setCustomSplits] = useState<Record<number, string>>({});
   const [percentSplits, setPercentSplits] = useState<Record<number, string>>({});
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 16));
+  const [date, setDate] = useState(toLocalDatetimeString(new Date()));
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -132,6 +132,7 @@ export default function NewExpense() {
 
     setSubmitting(true);
     try {
+      const utcDate = toUtcIsoString(date);
       const payload: any = {
         groupId,
         description: description.trim(),
@@ -139,7 +140,7 @@ export default function NewExpense() {
         splitMethod,
         paidBy,
         memberIds: [...checkedMembers],
-        date,
+        date: utcDate,
         categoryId: categoryId || undefined,
       };
 
