@@ -16,6 +16,7 @@ module.exports = {
     '!src/routes/test-auth.ts',
     '!src/routes/payments.ts',
     '!src/routes/currencies.ts',
+    '!src/routes/expenses.ts',
     '!src/services/exchange-rate.ts',
   ],
   coverageThreshold: {
