@@ -58,6 +58,7 @@ export default function SettleUp() {
   const [editDate, setEditDate] = useState('');
   const [editError, setEditError] = useState('');
   const [editSubmitting, setEditSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const fetchData = () => {
     setLoading(true);
@@ -185,6 +186,19 @@ export default function SettleUp() {
     setEditNote('');
     setEditDate('');
     setEditError('');
+  };
+
+  const handleDeletePayment = async (paymentId: number) => {
+    if (!window.confirm('Delete this settlement? This cannot be undone.')) return;
+    setDeletingId(paymentId);
+    try {
+      await api.deletePayment(paymentId);
+      setDeletingId(null);
+      fetchData();
+    } catch (err) {
+      setDeletingId(null);
+      alert('Failed to delete settlement.');
+    }
   };
 
   const involvedDebts = [...debtsOwedToMe, ...debtsIOwe];
@@ -392,6 +406,16 @@ export default function SettleUp() {
                         >
                           edit
                         </button>
+                        {(p.from_user === userId || p.to_user === userId) && (
+                          <button
+                            onClick={() => handleDeletePayment(p.id)}
+                            disabled={deletingId === p.id}
+                            className="text-xs text-gray-400 hover:text-red-600 underline"
+                            title="Delete payment"
+                          >
+                            {deletingId === p.id ? '...' : 'delete'}
+                          </button>
+                        )}
                       </div>
                     </div>
                     {editingPaymentId === p.id && (
