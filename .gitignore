@@ -7,3 +7,4 @@ pgdata/
 coverage/
 playwright-report/
 test-results/
+run-e2e.js

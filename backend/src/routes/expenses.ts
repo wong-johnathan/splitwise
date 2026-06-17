@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { query, pool } from '../db/pool';
 import { requireAuth, AuthRequest } from '../middleware/auth';
+import { broadcastToGroup } from '../services/websocket';
 
 const router = Router();
 router.use(requireAuth);
@@ -89,6 +90,9 @@ router.post('/', async (req: AuthRequest, res) => {
       expense: { ...expenseResult.rows[0], amount: parseFloat(expenseResult.rows[0].amount) },
       splits: splitsResult.rows,
     });
+
+    // Broadcast real-time update
+    broadcastToGroup(groupId, { type: 'expense_created', data: { expenseId } });
   } catch (err) {
     console.error('Create expense error:', err);
     res.status(500).json({ error: 'Internal server error' });
@@ -344,6 +348,9 @@ router.put('/:id', async (req: AuthRequest, res) => {
         expense: { ...updateResult.rows[0], amount: parseFloat(updateResult.rows[0].amount) },
         splits: splitsResult.rows.map((s: any) => ({ ...s, amount: parseFloat(s.amount) })),
       });
+
+      // Broadcast real-time update
+      broadcastToGroup(groupId, { type: 'expense_updated', data: { expenseId } });
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;
@@ -364,6 +371,13 @@ router.delete('/:id', async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'Invalid expense ID' });
     }
 
+    // Get the group_id before deleting (needed for broadcast)
+    const getGroup = await query('SELECT group_id FROM expenses WHERE id = $1', [expenseId]);
+    if (getGroup.rows.length === 0) {
+      return res.status(404).json({ error: 'Expense not found' });
+    }
+    const groupId = getGroup.rows[0].group_id;
+
     const result = await query(
       'DELETE FROM expenses WHERE id = $1 AND paid_by = $2 RETURNING id',
       [expenseId, req.userId]
@@ -374,6 +388,9 @@ router.delete('/:id', async (req: AuthRequest, res) => {
     }
 
     res.json({ message: 'Expense deleted' });
+
+    // Broadcast real-time update
+    broadcastToGroup(groupId, { type: 'expense_deleted', data: { expenseId } });
   } catch (err) {
     console.error('Delete expense error:', err);
     res.status(500).json({ error: 'Internal server error' });

@@ -2,6 +2,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useEffect, useState, useCallback } from 'react';
 import { api } from '@/api/client';
 import { useAuth } from '@/hooks/use-auth';
+import { useGroupRealtime } from '@/hooks/use-realtime';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Navbar from '@/components/layout/Navbar';
@@ -70,6 +71,22 @@ export default function GroupDetail() {
 
   const groupId = parseInt(id || '0');
   const userId = user?.id;
+
+  // Real-time updates via WebSocket
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : undefined;
+  useGroupRealtime(groupId, token || undefined, useCallback((event) => {
+    // Any real-time event → refetch data
+    if (!groupId) return;
+    Promise.all([api.getGroup(groupId), api.getExpenses(groupId)])
+      .then(([groupData, expenseData]) => {
+        setGroup(groupData.group);
+        setMembers(groupData.members);
+        setBalances(groupData.balances);
+        setDebts(groupData.debts);
+        setExpenses(expenseData.expenses);
+      })
+      .catch(console.error);
+  }, [groupId]));
 
   const loadData = useCallback(() => {
     if (!groupId) return;

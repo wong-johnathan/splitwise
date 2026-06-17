@@ -1,8 +1,10 @@
 import express from 'express';
 import cors from 'cors';
+import http from 'http';
 import { config } from './config';
 import { pool } from './db/pool';
 import { runMigrations } from './db/migrate';
+import { initWebSocket } from './services/websocket';
 
 // Routes
 import authRoutes from './routes/auth';
@@ -49,8 +51,12 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   res.status(500).json({ error: 'Internal server error' });
 });
 
+// Create HTTP server and attach WebSocket
+const server = http.createServer(app);
+initWebSocket(server);
+
 // Start server
-app.listen(config.PORT, async () => {
+server.listen(config.PORT, async () => {
   try {
     await runMigrations();
   } catch {
@@ -63,11 +69,11 @@ app.listen(config.PORT, async () => {
 process.on('SIGTERM', async () => {
   console.log('SIGTERM received, shutting down...');
   await pool.end();
-  process.exit(0);
+  server.close(() => process.exit(0));
 });
 
 process.on('SIGINT', async () => {
   console.log('SIGINT received, shutting down...');
   await pool.end();
-  process.exit(0);
+  server.close(() => process.exit(0));
 });

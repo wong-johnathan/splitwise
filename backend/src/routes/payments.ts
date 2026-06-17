@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { query } from '../db/pool';
 import { requireAuth, AuthRequest } from '../middleware/auth';
+import { broadcastToGroup } from '../services/websocket';
 
 const router = Router();
 router.use(requireAuth);
@@ -47,6 +48,9 @@ router.post('/', async (req: AuthRequest, res) => {
     payment.amount = parseFloat(payment.amount);
 
     res.status(201).json({ payment });
+
+    // Broadcast real-time update
+    broadcastToGroup(groupId, { type: 'payment_created', data: { paymentId: payment.id } });
   } catch (err) {
     console.error('Create payment error:', err);
     res.status(500).json({ error: 'Internal server error' });
@@ -91,6 +95,13 @@ router.delete('/:id', async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'Invalid payment ID' });
     }
 
+    // Get the group_id before deleting (needed for broadcast)
+    const getGroup = await query('SELECT group_id FROM payments WHERE id = $1', [paymentId]);
+    if (getGroup.rows.length === 0) {
+      return res.status(404).json({ error: 'Payment not found' });
+    }
+    const groupId = getGroup.rows[0].group_id;
+
     const result = await query(
       'DELETE FROM payments WHERE id = $1 AND (from_user = $2 OR to_user = $2) RETURNING id',
       [paymentId, req.userId]
@@ -101,6 +112,9 @@ router.delete('/:id', async (req: AuthRequest, res) => {
     }
 
     res.json({ message: 'Payment deleted' });
+
+    // Broadcast real-time update
+    broadcastToGroup(groupId, { type: 'payment_deleted', data: { paymentId } });
   } catch (err) {
     console.error('Delete payment error:', err);
     res.status(500).json({ error: 'Internal server error' });
