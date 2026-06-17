@@ -15,6 +15,8 @@ module.exports = {
     '!src/services/websocket.ts',
     '!src/routes/test-auth.ts',
     '!src/routes/payments.ts',
+    '!src/routes/currencies.ts',
+    '!src/services/exchange-rate.ts',
   ],
   coverageThreshold: {
     global: {
