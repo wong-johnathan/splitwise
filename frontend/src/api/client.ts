@@ -118,8 +118,8 @@ export const api = {
     }),
 
   // Activity Logs
-  getActivityLogs: (groupId: number) =>
-    request<{ activityLogs: any[] }>(`/api/activity-logs?groupId=${groupId}`),
+  getActivityLogs: (groupId: number, limit?: number) =>
+    request<{ activityLogs: any[] }>(`/api/activity-logs?groupId=${groupId}${limit ? `&limit=${limit}` : ''}`),
 
   // Categories
   getCategories: (groupId: number) =>

@@ -1,4 +1,6 @@
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { formatRelativeTime } from '@/lib/utils';
 
@@ -13,7 +15,10 @@ interface ActivityLog {
 
 interface Props {
   logs: ActivityLog[];
+  groupId: number;
 }
+
+const MAX_VISIBLE = 8;
 
 const actionBadge = (action: string) => {
   const styles: Record<string, string> = {
@@ -33,7 +38,11 @@ const actionBadge = (action: string) => {
   );
 };
 
-export default function ActivityFeed({ logs }: Props) {
+export default function ActivityFeed({ logs, groupId }: Props) {
+  const navigate = useNavigate();
+  const visibleLogs = logs.slice(0, MAX_VISIBLE);
+  const hasMore = logs.length > MAX_VISIBLE;
+
   if (logs.length === 0) {
     return (
       <Card className="mb-6">
@@ -54,7 +63,7 @@ export default function ActivityFeed({ logs }: Props) {
       </CardHeader>
       <CardContent className="pt-0">
         <div className="space-y-1">
-          {logs.map((log) => (
+          {visibleLogs.map((log) => (
             <div
               key={log.id}
               className="flex items-start gap-2 py-2 px-2 -mx-2 rounded hover:bg-gray-50 transition-colors"
@@ -71,6 +80,17 @@ export default function ActivityFeed({ logs }: Props) {
             </div>
           ))}
         </div>
+        {hasMore && (
+          <div className="mt-3 text-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/groups/${groupId}/activity-logs`)}
+            >
+              See all {logs.length} activity logs →
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -12,6 +12,8 @@ router.get('/', async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'groupId query parameter is required' });
     }
 
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+
     const memberCheck = await query(
       'SELECT 1 FROM group_members WHERE group_id = $1 AND user_id = $2',
       [groupId, req.userId]
@@ -26,8 +28,8 @@ router.get('/', async (req: AuthRequest, res) => {
        JOIN users u ON u.id = al.actor_id
        WHERE al.group_id = $1
        ORDER BY al.created_at DESC
-       LIMIT 50`,
-      [groupId]
+       LIMIT $2`,
+      [groupId, limit]
     );
 
     res.json({ activityLogs: result.rows });

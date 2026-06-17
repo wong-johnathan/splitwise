@@ -259,7 +259,7 @@ export default function GroupDetail() {
         </Card>
 
         {/* Expenses & Settlements */}
-        <Card>
+        <Card className="mb-6">
           <CardHeader>
             <CardTitle className="text-lg">Transaction History</CardTitle>
           </CardHeader>
@@ -380,7 +380,7 @@ export default function GroupDetail() {
           </CardContent>
         </Card>
 
-        <ActivityFeed logs={activityLogs} />
+        <ActivityFeed logs={activityLogs} groupId={groupId} />
 
         {/* Delete group */}
         <div className="mt-8 text-center">
