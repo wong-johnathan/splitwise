@@ -345,8 +345,8 @@ export default function SettleUp() {
                           {formatDateTime(p.created_at)}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold">{formatCurrency(p.amount)}</span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className="font-bold whitespace-nowrap">{formatCurrency(p.amount)}</span>
                         <button
                           onClick={() => navigate(`/groups/${groupId}/payments/${p.id}/edit`)}
                           className="text-xs text-gray-400 hover:text-blue-600 underline"

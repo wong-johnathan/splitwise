@@ -283,20 +283,20 @@ export default function GroupDetail() {
                   >
                     {expense.type === 'payment' ? (
                       <div className="flex items-start gap-2">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-medium text-green-700 bg-green-100 px-1.5 py-0.5 rounded">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-medium text-green-700 bg-green-100 px-1.5 py-0.5 rounded whitespace-nowrap">
                               Settlement
                             </span>
-                            <p className="font-medium">{expense.description}</p>
+                            <p className="font-medium break-words">{expense.description}</p>
                           </div>
                           {expense.note && (
-                            <p className="text-sm text-gray-500">{expense.note}</p>
+                            <p className="text-sm text-gray-500 break-words">{expense.note}</p>
                           )}
                           <p className="text-sm text-gray-400">{formatDateTime(expense.created_at)}</p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-lg text-green-700">{formatCurrency(expense.amount)}</span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className="font-bold text-lg text-green-700 whitespace-nowrap">{formatCurrency(expense.amount)}</span>
                           <button
                             onClick={() => navigate(`/groups/${groupId}/payments/${expense.id}/edit`)}
                             className="text-xs text-gray-400 hover:text-blue-600 underline"
@@ -337,8 +337,8 @@ export default function GroupDetail() {
                             Paid by {expense.paid_by_name} · {formatDate(expense.expense_date)}
                           </p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-lg">{formatCurrency(expense.amount)}</span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className="font-bold text-lg whitespace-nowrap">{formatCurrency(expense.amount)}</span>
                           <button
                             onClick={() => navigate(`/groups/${groupId}/expenses/${expense.id}/edit`)}
                             className="text-xs text-gray-400 hover:text-blue-600 underline"
