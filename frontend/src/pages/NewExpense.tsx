@@ -178,6 +178,10 @@ export default function NewExpense() {
       }
 
       await api.createExpense(payload);
+      // Track the selected category as recently used
+      if (categoryId) {
+        setRecentCategoryIds((prev) => [categoryId, ...prev.filter((id) => id !== categoryId)]);
+      }
       navigate(`/groups/${groupId}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to create expense');
@@ -242,15 +246,12 @@ export default function NewExpense() {
                 groupId={groupId}
                 onSelect={(id) => {
                   setCategoryId(id);
-                  if (id) {
-                    setRecentCategoryIds((prev) => {
-                      const next = [id, ...prev.filter((pid) => pid !== id)];
-                      return next.slice(0, 20);
-                    });
-                  }
                 }}
                 onCategoriesChange={setCategories}
                 recentIds={recentCategoryIds}
+                onNewCategory={(id) => {
+                  setRecentCategoryIds((prev) => [id, ...prev.filter((pid) => pid !== id)]);
+                }}
               />
 
               <div className="space-y-2">

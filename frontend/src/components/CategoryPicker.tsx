@@ -19,6 +19,8 @@ interface CategoryPickerProps {
   onCategoriesChange: (categories: Category[]) => void;
   /** IDs used for "recent" ordering — most recent first */
   recentIds?: number[];
+  /** Fires when a brand-new category is created (not just selected) */
+  onNewCategory?: (categoryId: number) => void;
 }
 
 const RECENT_LIMIT = 8;
@@ -30,6 +32,7 @@ export default function CategoryPicker({
   onSelect,
   onCategoriesChange,
   recentIds,
+  onNewCategory,
 }: CategoryPickerProps) {
   const [showModal, setShowModal] = useState(false);
   const [showNewForm, setShowNewForm] = useState(false);
@@ -64,6 +67,7 @@ export default function CategoryPicker({
       const updated = [...categories, res.category];
       onCategoriesChange(updated);
       onSelect(res.category.id);
+      onNewCategory?.(res.category.id);
       setNewName('');
       setShowNewForm(false);
     } catch (err) {
