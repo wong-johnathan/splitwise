@@ -21,6 +21,10 @@ interface Expense {
   expense_date: string;
   created_at: string;
   note?: string;
+  category_id?: number;
+  category_name?: string;
+  category_color?: string;
+  category_icon?: string;
   splits: {
     id: number;
     user_id: number;
@@ -289,7 +293,22 @@ export default function GroupDetail() {
                     ) : (
                       <div className="flex items-start gap-2">
                         <div className="flex-1">
-                          <p className="font-medium">{expense.description}</p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-medium">{expense.description}</p>
+                            {expense.category_name && (
+                              <span
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium border"
+                                style={{
+                                  color: expense.category_color || '#6B7280',
+                                  borderColor: expense.category_color || '#6B7280',
+                                  backgroundColor: `${expense.category_color || '#6B7280'}15`,
+                                }}
+                              >
+                                {expense.category_icon && <span>{expense.category_icon}</span>}
+                                {expense.category_name}
+                              </span>
+                            )}
+                          </div>
                           <p className="text-sm text-gray-500">
                             Paid by {expense.paid_by_name} · {formatDate(expense.expense_date)}
                           </p>

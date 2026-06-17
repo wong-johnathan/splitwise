@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { query } from '../db/pool';
 import { requireAuth, AuthRequest } from '../middleware/auth';
 import { simplifyDebts } from '../services/balance';
+import { seedDefaultCategories } from './categories';
 
 const router = Router();
 router.use(requireAuth);
@@ -38,6 +39,9 @@ router.post('/', async (req: AuthRequest, res) => {
         );
       }
     }
+
+    // Seed default categories
+    await seedDefaultCategories(groupId);
 
     res.status(201).json({ group: result.rows[0] });
   } catch (err) {

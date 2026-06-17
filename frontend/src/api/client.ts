@@ -116,4 +116,17 @@ export const api = {
 
   deletePayment: (id: number) =>
     request<{ message: string }>(`/api/payments/${id}`, { method: 'DELETE' }),
+
+  // Categories
+  getCategories: (groupId: number) =>
+    request<{ categories: any[] }>(`/api/categories?groupId=${groupId}`),
+
+  createCategory: (data: { groupId: number; name: string; color?: string; icon?: string }) =>
+    request<{ category: any }>('/api/categories', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  deleteCategory: (id: number) =>
+    request<{ message: string }>(`/api/categories/${id}`, { method: 'DELETE' }),
 };

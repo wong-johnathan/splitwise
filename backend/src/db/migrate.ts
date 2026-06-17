@@ -68,6 +68,50 @@ export async function runMigrations() {
     throw err;
   }
 
+  // ✅ Categories migration (002)
+  try {
+    const categoryTableCheck = await pool.query(`
+      SELECT 1 FROM information_schema.tables WHERE table_name = 'categories'
+    `);
+    if (categoryTableCheck.rows.length === 0) {
+      const possiblePaths = [
+        path.resolve(__dirname, '../migrations/002_categories.sql'),
+        path.resolve(__dirname, '../db/migrations/002_categories.sql'),
+        path.resolve(__dirname, '../../src/db/migrations/002_categories.sql'),
+        path.resolve(__dirname, '../src/db/migrations/002_categories.sql'),
+      ];
+      let sqlPath: string | null = null;
+      for (const p of possiblePaths) {
+        if (fs.existsSync(p)) { sqlPath = p; break; }
+      }
+      if (sqlPath) {
+        const sql = fs.readFileSync(sqlPath, 'utf-8');
+        await pool.query(sql);
+        console.log('✅ Categories migration complete');
+      }
+    } else {
+      // Ensure category_id column exists on expenses (for idempotent reruns)
+      const colCheck2 = await pool.query(`
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'expenses' AND column_name = 'category_id'
+      `);
+      if (colCheck2.rows.length === 0) {
+        await pool.query('ALTER TABLE expenses ADD COLUMN category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL');
+        console.log('✅ Added category_id to expenses');
+      }
+
+      // Also ensure FK index exists
+      const idxCheck = await pool.query(`
+        SELECT 1 FROM pg_indexes WHERE indexname = 'idx_expenses_category'
+      `);
+      if (idxCheck.rows.length === 0) {
+        await pool.query('CREATE INDEX idx_expenses_category ON expenses(category_id)');
+      }
+    }
+  } catch (err) {
+    console.error('❌ Categories migration failed:', err);
+  }
+
   // ✅ Expense date → TIMESTAMPTZ so users can enter precise datetime
   try {
     const dateTypeCheck = await pool.query(`

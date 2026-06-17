@@ -8,7 +8,7 @@ router.use(requireAuth);
 // POST /api/expenses — create expense with splits
 router.post('/', async (req: AuthRequest, res) => {
   try {
-    const { groupId, description, amount, splitMethod, paidBy, splits, memberIds, date } = req.body;
+    const { groupId, description, amount, splitMethod, paidBy, splits, memberIds, date, categoryId } = req.body;
 
     if (!groupId || !description || !amount) {
       return res.status(400).json({ error: 'groupId, description, and amount are required' });
@@ -31,9 +31,9 @@ router.post('/', async (req: AuthRequest, res) => {
     const payerId = paidBy || req.userId;
 
     const expenseResult = await query(
-      `INSERT INTO expenses (group_id, paid_by, description, amount, split_method, expense_date)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [groupId, payerId, description, numAmount, splitMethod || 'equal', date || new Date()]
+      `INSERT INTO expenses (group_id, paid_by, description, amount, split_method, expense_date, category_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [groupId, payerId, description, numAmount, splitMethod || 'equal', date || new Date(), categoryId || null]
     );
 
     const expenseId = expenseResult.rows[0].id;
@@ -103,11 +103,13 @@ router.get('/', async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'groupId query parameter is required' });
     }
 
-    // Fetch expenses with splits
+    // Fetch expenses with splits and category info
     const expenseResult = await query(
-      `SELECT e.*, u.name AS paid_by_name, u.email AS paid_by_email
+      `SELECT e.*, u.name AS paid_by_name, u.email AS paid_by_email,
+              c.id AS category_id, c.name AS category_name, c.color AS category_color, c.icon AS category_icon
        FROM expenses e
        JOIN users u ON u.id = e.paid_by
+       LEFT JOIN categories c ON c.id = e.category_id
        WHERE e.group_id = $1
        ORDER BY e.expense_date DESC, e.created_at DESC`,
       [groupId]
@@ -186,9 +188,11 @@ router.get('/:id', async (req: AuthRequest, res) => {
     }
 
     const result = await query(
-      `SELECT e.*, u.name AS paid_by_name
+      `SELECT e.*, u.name AS paid_by_name,
+              c.id AS category_id, c.name AS category_name, c.color AS category_color, c.icon AS category_icon
        FROM expenses e
        JOIN users u ON u.id = e.paid_by
+       LEFT JOIN categories c ON c.id = e.category_id
        WHERE e.id = $1`,
       [expenseId]
     );
@@ -238,7 +242,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'Invalid expense ID' });
     }
 
-    const { description, amount, paidBy, splitMethod, splits, memberIds, date } = req.body;
+    const { description, amount, paidBy, splitMethod, splits, memberIds, date, categoryId } = req.body;
 
     if (!description || !amount) {
       return res.status(400).json({ error: 'description and amount are required' });
@@ -274,9 +278,9 @@ router.put('/:id', async (req: AuthRequest, res) => {
       // 1. Update the expense row
       const updateResult = await client.query(
         `UPDATE expenses
-         SET description = $1, amount = $2, paid_by = $3, split_method = $4, expense_date = $5
-         WHERE id = $6 RETURNING *`,
-        [description, numAmount, payerId, method, expenseDate, expenseId]
+         SET description = $1, amount = $2, paid_by = $3, split_method = $4, expense_date = $5, category_id = $6
+         WHERE id = $7 RETURNING *`,
+        [description, numAmount, payerId, method, expenseDate, categoryId || null, expenseId]
       );
 
       // 2. Delete existing splits

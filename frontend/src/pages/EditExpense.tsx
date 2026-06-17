@@ -14,6 +14,13 @@ interface Member {
   name: string;
 }
 
+interface Category {
+  id: number;
+  name: string;
+  color: string;
+  icon: string | null;
+}
+
 type SplitMethod = 'equal' | 'percentage' | 'custom';
 
 export default function EditExpense() {
@@ -41,24 +48,35 @@ export default function EditExpense() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // Category state
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoryId, setCategoryId] = useState<number | ''>('');
+  const [showNewCategory, setShowNewCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+
   useEffect(() => {
     if (!groupId || !expenseId) return;
 
-    Promise.all([api.getGroup(groupId), api.getExpense(expenseId)])
-      .then(([groupData, expenseData]) => {
+    Promise.all([api.getGroup(groupId), api.getExpense(expenseId), api.getCategories(groupId)])
+      .then(([groupData, expenseData, catData]) => {
         const ms = groupData.members;
         const exp = expenseData.expense;
         const splits = expenseData.splits;
 
         setMembers(ms);
         setGroupName(groupData.group.name);
+        setCategories(catData.categories);
 
         // Pre-populate form
         setDescription(exp.description);
         setAmount(String(exp.amount));
         setPaidBy(exp.paid_by);
         setSplitMethod(exp.split_method || 'equal');
-        // Pre-populate datetime (slice to datetime-local format)
+        // Pre-populate category
+        if (exp.category_id) {
+          setCategoryId(exp.category_id);
+        }
+        // Pre-populate datetime
         if (exp.expense_date) {
           setDate(new Date(exp.expense_date).toISOString().slice(0, 16));
         }
@@ -112,6 +130,19 @@ export default function EditExpense() {
     return checkedList.map((m) => ({ name: m.name, amount: share }));
   };
 
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    try {
+      const res = await api.createCategory({ groupId, name: newCategoryName.trim() });
+      setCategories((prev) => [...prev, res.category]);
+      setCategoryId(res.category.id);
+      setNewCategoryName('');
+      setShowNewCategory(false);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to create category');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -138,6 +169,7 @@ export default function EditExpense() {
         paidBy,
         memberIds: [...checkedMembers],
         date,
+        categoryId: categoryId || undefined,
       };
 
       if (splitMethod === 'custom') {
@@ -230,6 +262,49 @@ export default function EditExpense() {
                   onChange={(e) => setAmount(e.target.value)}
                   required
                 />
+              </div>
+
+              {/* Category selector */}
+              <div className="space-y-2">
+                <Label>Category</Label>
+                <div className="flex gap-2">
+                  <select
+                    className="flex-1 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={categoryId}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '__new__') {
+                        setShowNewCategory(true);
+                      } else {
+                        setCategoryId(val ? parseInt(val) : '');
+                      }
+                    }}
+                  >
+                    <option value="">No category</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.icon ? `${cat.icon} ` : ''}{cat.name}
+                      </option>
+                    ))}
+                    <option value="__new__">+ Add new category...</option>
+                  </select>
+                </div>
+                {showNewCategory && (
+                  <div className="flex gap-2 items-center">
+                    <Input
+                      placeholder="Category name"
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button type="button" size="sm" onClick={handleAddCategory} disabled={!newCategoryName.trim()}>
+                      Add
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" onClick={() => { setShowNewCategory(false); setNewCategoryName(''); }}>
+                      Cancel
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
