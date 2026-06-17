@@ -45,9 +45,9 @@ export const api = {
   getGroups: () => request<{ groups: any[] }>('/api/groups'),
 
   getGroup: (id: number) =>
-    request<{ group: any; members: any[]; balances: any[]; debts: any[] }>(`/api/groups/${id}`),
+    request<{ group: any; members: any[]; balances: any[]; perCurrencyBalances?: any[]; debts: any[] }>(`/api/groups/${id}`),
 
-  createGroup: (data: { name: string; description?: string; memberIds?: number[] }) =>
+  createGroup: (data: { name: string; description?: string; memberIds?: number[]; baseCurrency?: string; multiCurrency?: boolean }) =>
     request<{ group: any }>('/api/groups', { method: 'POST', body: JSON.stringify(data) }),
 
   searchUsers: (q: string) =>
@@ -124,4 +124,8 @@ export const api = {
   // Categories
   getCategories: (groupId: number) =>
     request<{ categories: any[] }>(`/api/categories?groupId=${groupId}`),
+
+  // Currencies
+  getCurrencies: (base?: string) =>
+    request<{ currencies: any[] }>(`/api/currencies${base ? `?base=${base}` : ''}`),
 };

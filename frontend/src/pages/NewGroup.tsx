@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Navbar from '@/components/layout/Navbar';
+import { SUPPORTED_CURRENCIES } from '@/lib/currencies';
 
 interface User {
   id: number;
@@ -15,6 +16,8 @@ interface User {
 export default function NewGroup() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [baseCurrency, setBaseCurrency] = useState('SGD');
+  const [multiCurrency, setMultiCurrency] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -68,6 +71,8 @@ export default function NewGroup() {
         name: name.trim(),
         description: description.trim() || undefined,
         memberIds: selectedMembers.map((m) => m.id),
+        baseCurrency,
+        multiCurrency,
       });
       navigate('/dashboard');
     } catch (err) {
@@ -113,6 +118,44 @@ export default function NewGroup() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
+              </div>
+
+              {/* Base Currency */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Base Currency</label>
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={baseCurrency}
+                  onChange={(e) => setBaseCurrency(e.target.value)}
+                >
+                  {SUPPORTED_CURRENCIES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.code} — {c.name} ({c.symbol})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Multi-currency toggle */}
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={multiCurrency}
+                  onClick={() => setMultiCurrency(!multiCurrency)}
+                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                    multiCurrency ? 'bg-blue-600' : 'bg-gray-200'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transform ring-0 transition-transform ${
+                      multiCurrency ? 'translate-x-4' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+                <label className="text-sm font-medium cursor-pointer" onClick={() => setMultiCurrency(!multiCurrency)}>
+                  Multi-currency expenses — allow expenses in different currencies
+                </label>
               </div>
 
               <div className="space-y-2">

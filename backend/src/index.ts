@@ -15,6 +15,7 @@ import paymentRoutes from './routes/payments';
 import categoryRoutes from './routes/categories';
 import testAuthRoutes from './routes/test-auth';
 import activityLogRoutes from './routes/activity-logs';
+import currencyRoutes from './routes/currencies';
 
 const app = express();
 
@@ -41,6 +42,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/auth', testAuthRoutes);
 app.use('/api/activity-logs', activityLogRoutes);
+app.use('/api/currencies', currencyRoutes);
 
 // 404 handler
 app.use((_req, res) => {

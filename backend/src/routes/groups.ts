@@ -10,15 +10,15 @@ router.use(requireAuth);
 // POST /api/groups — create a new group
 router.post('/', async (req: AuthRequest, res) => {
   try {
-    const { name, description, memberIds } = req.body;
+    const { name, description, memberIds, baseCurrency, multiCurrency } = req.body;
 
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
       return res.status(400).json({ error: 'Group name is required' });
     }
 
     const result = await query(
-      'INSERT INTO groups (name, description, created_by) VALUES ($1, $2, $3) RETURNING *',
-      [name.trim(), description || null, req.userId]
+      'INSERT INTO groups (name, description, created_by, base_currency, multi_currency) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [name.trim(), description || null, req.userId, baseCurrency || 'SGD', multiCurrency || false]
     );
 
     const groupId = result.rows[0].id;
@@ -105,6 +105,9 @@ router.get('/:id', async (req: AuthRequest, res) => {
       return res.status(404).json({ error: 'Group not found' });
     }
 
+    const group = groupResult.rows[0];
+    const isMultiCurrency = group.multi_currency;
+
     // Get members
     const membersResult = await query(
       `SELECT u.id, u.name, u.email, u.avatar_url, gm.joined_at
@@ -153,6 +156,49 @@ router.get('/:id', async (req: AuthRequest, res) => {
       balance: parseFloat(b.net_balance || '0'),
     }));
 
+    // Per-currency balances (only for multi-currency groups)
+    let perCurrencyBalances: any[] = [];
+    if (isMultiCurrency) {
+      const perCurrencyResult = await query(
+        `SELECT
+          u.id AS user_id,
+          u.name,
+          COALESCE(paid.currency, owed.currency, sent.currency, received.currency, $2) AS currency,
+          COALESCE(paid.total_paid, 0) - COALESCE(owed.total_owed, 0)
+          + COALESCE(sent.total_sent, 0) - COALESCE(received.total_received, 0) AS net_balance
+        FROM group_members gm
+        JOIN users u ON u.id = gm.user_id
+        LEFT JOIN (
+          SELECT paid_by AS user_id, currency, SUM(amount) AS total_paid
+          FROM expenses WHERE group_id = $1 GROUP BY paid_by, currency
+        ) paid ON paid.user_id = u.id
+        LEFT JOIN (
+          SELECT es.user_id, e.currency, SUM(es.amount) AS total_owed
+          FROM expense_splits es
+          JOIN expenses e ON e.id = es.expense_id
+          WHERE e.group_id = $1
+          GROUP BY es.user_id, e.currency
+        ) owed ON owed.user_id = u.id AND owed.currency = paid.currency
+        LEFT JOIN (
+          SELECT from_user AS user_id, currency, SUM(amount) AS total_sent
+          FROM payments WHERE group_id = $1 GROUP BY from_user, currency
+        ) sent ON sent.user_id = u.id AND sent.currency = COALESCE(paid.currency, owed.currency, $2)
+        LEFT JOIN (
+          SELECT to_user AS user_id, currency, SUM(amount) AS total_received
+          FROM payments WHERE group_id = $1 GROUP BY to_user, currency
+        ) received ON received.user_id = u.id AND received.currency = COALESCE(paid.currency, owed.currency, sent.currency, $2)
+        WHERE gm.group_id = $1
+        ORDER BY u.name, currency`,
+        [groupId, group.base_currency]
+      );
+      perCurrencyBalances = perCurrencyResult.rows.map((b: any) => ({
+        userId: b.user_id,
+        name: b.name,
+        currency: b.currency,
+        balance: parseFloat(b.net_balance || '0'),
+      }));
+    }
+
     // Calculate simplified debts
     const debts = simplifyDebts(
       balances.map((b) => ({ userId: b.userId, balance: b.balance }))
@@ -175,6 +221,7 @@ router.get('/:id', async (req: AuthRequest, res) => {
       group: groupResult.rows[0],
       members: membersResult.rows,
       balances,
+      perCurrencyBalances,
       debts: debtsWithNames,
     });
   } catch (err) {

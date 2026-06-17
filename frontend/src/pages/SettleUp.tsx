@@ -10,6 +10,7 @@ import Navbar from '@/components/layout/Navbar';
 import { LoadingSpinner } from '@/components/ui/loading';
 import { EmptyState } from '@/components/ui/empty-state';
 import { formatCurrency, formatDateTime, toLocalDatetimeString } from '@/lib/utils';
+import { SUPPORTED_CURRENCIES, formatCurrencyByCode } from '@/lib/currencies';
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
 
 interface Debt {
@@ -54,6 +55,12 @@ export default function SettleUp() {
 
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
+  // Multi-currency state
+  const [baseCurrency, setBaseCurrency] = useState('SGD');
+  const [isMultiCurrency, setIsMultiCurrency] = useState(false);
+  const [settleCurrency, setSettleCurrency] = useState('SGD');
+  const [perCurrencyBalances, setPerCurrencyBalances] = useState<any[]>([]);
+
   const fetchData = () => {
     setLoading(true);
     Promise.all([api.getGroup(groupId), api.getPayments(groupId)])
@@ -61,6 +68,10 @@ export default function SettleUp() {
         setGroupName(groupData.group.name);
         setDebts(groupData.debts);
         setPayments(paymentData.payments);
+        setBaseCurrency(groupData.group.base_currency || 'SGD');
+        setIsMultiCurrency(groupData.group.multi_currency || false);
+        setPerCurrencyBalances(groupData.perCurrencyBalances || []);
+        setSettleCurrency(groupData.group.base_currency || 'SGD');
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -103,24 +114,26 @@ export default function SettleUp() {
 
     setSubmitting(true);
     try {
+      const payload: any = {
+        groupId,
+        toUser: selectedDebt.toUser,
+        amount: numAmount,
+        note: note.trim() || undefined,
+        date: date || undefined,
+        currency: isMultiCurrency ? settleCurrency : undefined,
+      };
+      if (isMultiCurrency) {
+        payload.currency = settleCurrency;
+      }
       if (settleDirection === 'paying') {
         // I owe them → I pay them
-        await api.createPayment({
-          groupId,
-          toUser: selectedDebt.toUser,
-          amount: numAmount,
-          note: note.trim() || undefined,
-          date: date || undefined,
-        });
+        await api.createPayment(payload);
       } else {
         // They owe me → they pay me
         await api.createPayment({
-          groupId,
+          ...payload,
           fromUser: selectedDebt.fromUser,
           toUser: userId,
-          amount: numAmount,
-          note: note.trim() || undefined,
-          date: date || undefined,
         });
       }
       setSuccess(true);
@@ -276,7 +289,7 @@ export default function SettleUp() {
               )}
               <div className="space-y-3">
                 <div className="space-y-2">
-                  <Label>Amount ($)</Label>
+                  <Label>Amount</Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -284,6 +297,22 @@ export default function SettleUp() {
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                   />
+                  {isMultiCurrency && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-400">Currency:</span>
+                      <select
+                        className="flex h-7 text-xs rounded-md border border-input bg-background px-2"
+                        value={settleCurrency}
+                        onChange={(e) => setSettleCurrency(e.target.value)}
+                      >
+                        {SUPPORTED_CURRENCIES.map((c) => (
+                          <option key={c.code} value={c.code}>
+                            {c.code} ({c.symbol})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Note (optional)</Label>

@@ -9,6 +9,7 @@ import Navbar from '@/components/layout/Navbar';
 import { LoadingSpinner } from '@/components/ui/loading';
 import { formatCurrency, toLocalDatetimeString, toUtcIsoString } from '@/lib/utils';
 import CategoryPicker from '@/components/CategoryPicker';
+import { SUPPORTED_CURRENCIES, getCurrencySymbol } from '@/lib/currencies';
 
 interface Member {
   id: number;
@@ -49,6 +50,13 @@ export default function NewExpense() {
   const [categoryId, setCategoryId] = useState<number | ''>('');
   const [recentCategoryIds, setRecentCategoryIds] = useState<number[]>([]);
 
+  // Multi-currency state
+  const [baseCurrency, setBaseCurrency] = useState('SGD');
+  const [isMultiCurrency, setIsMultiCurrency] = useState(false);
+  const [currency, setCurrency] = useState('SGD');
+  const [fxRate, setFxRate] = useState<number | null>(null);
+  const [currenciesWithRates, setCurrenciesWithRates] = useState<{ code: string; rate: number }[]>([]);
+
   useEffect(() => {
     if (!groupId) return;
 
@@ -58,16 +66,31 @@ export default function NewExpense() {
         setMembers(ms);
         setGroupName(groupData.group.name);
         setCategories(catData.categories);
+        const baseCcy = groupData.group.base_currency || 'SGD';
+        setBaseCurrency(baseCcy);
+        setCurrency(baseCcy);
+        setIsMultiCurrency(groupData.group.multi_currency || false);
         if (ms.length > 0) {
           const firstId = ms[0].id;
           setPaidBy(firstId);
-          // Default: everyone checked (payer included in the split)
           setCheckedMembers(new Set(ms.map((m: Member) => m.id)));
         }
       })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [groupId]);
+
+  // Fetch rates when currency changes (multi-currency only)
+  useEffect(() => {
+    if (!isMultiCurrency) return;
+    api.getCurrencies(baseCurrency)
+      .then(data => {
+        setCurrenciesWithRates(data.currencies);
+        const found = data.currencies.find((c: any) => c.code === currency);
+        if (found) setFxRate(found.rate);
+      })
+      .catch(() => {});
+  }, [currency, baseCurrency, isMultiCurrency]);
 
   // When paidBy changes, ensure all members stay checked
   useEffect(() => {
@@ -178,7 +201,11 @@ export default function NewExpense() {
         }));
       }
 
-      await api.createExpense(payload);
+      await api.createExpense({
+        ...payload,
+        currency: isMultiCurrency ? currency : undefined,
+        fxRate: isMultiCurrency && fxRate ? fxRate : undefined,
+      });
       // Track the selected category as recently used
       if (categoryId) {
         setRecentCategoryIds((prev) => [categoryId, ...prev.filter((id) => id !== categoryId)]);
@@ -239,6 +266,37 @@ export default function NewExpense() {
                   required
                 />
               </div>
+
+              {/* Currency selector (multi-currency only) */}
+              {isMultiCurrency && (
+                <div className="space-y-2">
+                  <Label>Currency</Label>
+                  <select
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value)}
+                  >
+                    {SUPPORTED_CURRENCIES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.code} — {c.name} ({c.symbol})
+                      </option>
+                    ))}
+                  </select>
+                  {fxRate && currency !== baseCurrency && (
+                    <p className="text-xs text-gray-500">
+                      1 {currency} = {fxRate.toFixed(6)} {baseCurrency}
+                      {numAmount > 0 && (
+                        <span className="ml-2 font-medium text-gray-700">
+                          ≈ {getCurrencySymbol(baseCurrency)}{(numAmount * fxRate).toFixed(2)} {baseCurrency}
+                        </span>
+                      )}
+                    </p>
+                  )}
+                  {currency === baseCurrency && (
+                    <p className="text-xs text-gray-400">Same as group base currency ({baseCurrency})</p>
+                  )}
+                </div>
+              )}
 
               {/* Category picker */}
               <CategoryPicker

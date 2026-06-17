@@ -192,4 +192,54 @@ export async function runMigrations() {
   } catch (err) {
     console.error('❌ Activity logs migration failed:', err);
   }
+
+  // ✅ Multi-currency migration (005)
+  try {
+    // Check if base_currency column exists on groups
+    const mcCheck = await pool.query(`
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'groups' AND column_name = 'base_currency'
+    `);
+    if (mcCheck.rows.length === 0) {
+      const possiblePaths = [
+        path.resolve(__dirname, '../migrations/005_multi_currency.sql'),
+        path.resolve(__dirname, '../db/migrations/005_multi_currency.sql'),
+        path.resolve(__dirname, '../../src/db/migrations/005_multi_currency.sql'),
+        path.resolve(__dirname, '../src/db/migrations/005_multi_currency.sql'),
+      ];
+      let sqlPath: string | null = null;
+      for (const p of possiblePaths) {
+        if (fs.existsSync(p)) { sqlPath = p; break; }
+      }
+      if (sqlPath) {
+        const sql = fs.readFileSync(sqlPath, 'utf-8');
+        await pool.query(sql);
+        console.log('✅ Multi-currency migration complete');
+      }
+    } else {
+      // Idempotent: ensure columns exist (re-run safe)
+      await pool.query(`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS currency VARCHAR(3) NOT NULL DEFAULT 'SGD'`);
+      await pool.query(`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS amount_in_base DECIMAL(12,2)`);
+      await pool.query(`ALTER TABLE expenses ADD COLUMN IF NOT EXISTS fx_rate DECIMAL(12,6) DEFAULT 1`);
+      await pool.query(`ALTER TABLE payments ADD COLUMN IF NOT EXISTS currency VARCHAR(3) NOT NULL DEFAULT 'SGD'`);
+      await pool.query(`ALTER TABLE payments ADD COLUMN IF NOT EXISTS amount_in_base DECIMAL(12,2)`);
+      await pool.query(`ALTER TABLE payments ADD COLUMN IF NOT EXISTS fx_rate DECIMAL(12,6) DEFAULT 1`);
+      await pool.query(`UPDATE expenses SET amount_in_base = amount, fx_rate = 1 WHERE amount_in_base IS NULL`);
+      await pool.query(`UPDATE payments SET amount_in_base = amount, fx_rate = 1 WHERE amount_in_base IS NULL`);
+      // Create cached_rates table if not exists
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS cached_rates (
+          id SERIAL PRIMARY KEY,
+          base_currency VARCHAR(3) NOT NULL,
+          target_currency VARCHAR(3) NOT NULL,
+          rate DECIMAL(12,6) NOT NULL,
+          fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          UNIQUE(base_currency, target_currency)
+        )
+      `);
+      console.log('✅ Multi-currency columns verified');
+    }
+  } catch (err) {
+    console.error('❌ Multi-currency migration failed:', err);
+  }
 }

@@ -9,6 +9,7 @@ import Navbar from '@/components/layout/Navbar';
 import { LoadingSpinner } from '@/components/ui/loading';
 import { EmptyState } from '@/components/ui/empty-state';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
+import { formatCurrencyByCode } from '@/lib/currencies';
 import { Pencil, Trash2 } from 'lucide-react';
 import AddMemberDialog from '@/components/AddMemberDialog';
 import ActivityFeed from '@/components/ActivityFeed';
@@ -30,6 +31,8 @@ interface Expense {
   category_name?: string;
   category_color?: string;
   category_icon?: string;
+  currency?: string;
+  amount_in_base?: number;
   splits: {
     id: number;
     user_id: number;
@@ -68,11 +71,14 @@ export default function GroupDetail() {
   const [members, setMembers] = useState<Member[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [balances, setBalances] = useState<Balance[]>([]);
+  const [perCurrencyBalances, setPerCurrencyBalances] = useState<any[]>([]);
   const [debts, setDebts] = useState<Debt[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddMember, setShowAddMember] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [activityLogs, setActivityLogs] = useState<any[]>([]);
+  const [baseCurrency, setBaseCurrency] = useState('SGD');
+  const [isMultiCurrency, setIsMultiCurrency] = useState(false);
 
   const groupId = parseInt(id || '0');
   const userId = user?.id;
@@ -102,8 +108,11 @@ export default function GroupDetail() {
         setGroup(groupData.group);
         setMembers(groupData.members);
         setBalances(groupData.balances);
+        setPerCurrencyBalances(groupData.perCurrencyBalances || []);
         setDebts(groupData.debts);
         setExpenses(expenseData.expenses);
+        setBaseCurrency(groupData.group.base_currency || 'SGD');
+        setIsMultiCurrency(groupData.group.multi_currency || false);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -199,25 +208,66 @@ export default function GroupDetail() {
 
         {/* Balances */}
         <CollapsibleCard title="Balances" storageKey="balances" defaultOpen={true}>
-          <div className="space-y-2">
-            {balances.map((b) => (
-              <div key={b.userId} className="flex justify-between items-center">
-                <span className="text-sm">{b.name}</span>
-                <span
-                  className={`font-medium text-sm ${
-                    b.balance > 0
-                      ? 'text-green-600'
-                      : b.balance < 0
-                        ? 'text-red-600'
-                        : 'text-gray-500'
-                  }`}
-                >
-                  {b.balance > 0 ? 'is owed ' : b.balance < 0 ? 'owes ' : 'settled up'}
-                  {b.balance !== 0 && formatCurrency(Math.abs(b.balance))}
-                </span>
-              </div>
-            ))}
-          </div>
+          {isMultiCurrency && perCurrencyBalances.length > 0 ? (
+            (() => {
+              // Group per-currency balances by user
+              const userCurrencyMap = new Map<number, { name: string; balances: { currency: string; balance: number }[] }>();
+              for (const pcb of perCurrencyBalances) {
+                if (!userCurrencyMap.has(pcb.userId)) {
+                  userCurrencyMap.set(pcb.userId, { name: pcb.name, balances: [] });
+                }
+                userCurrencyMap.get(pcb.userId)!.balances.push({ currency: pcb.currency, balance: pcb.balance });
+              }
+              return (
+                <div className="space-y-3">
+                  {Array.from(userCurrencyMap.values()).map(({ name, balances }) => (
+                    <div key={name} className="text-sm">
+                      <span className="font-medium">{name}</span>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {balances.filter(b => b.balance !== 0).map(b => (
+                          <span
+                            key={b.currency}
+                            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                              b.balance > 0
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-red-100 text-red-700'
+                            }`}
+                          >
+                            {b.balance > 0 ? 'is owed ' : 'owes '}
+                            {formatCurrencyByCode(Math.abs(b.balance), b.currency)}
+                            {' '}{b.currency}
+                          </span>
+                        ))}
+                        {balances.filter(b => b.balance !== 0).length === 0 && (
+                          <span className="text-xs text-gray-400">settled up</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()
+          ) : (
+            <div className="space-y-2">
+              {balances.map((b) => (
+                <div key={b.userId} className="flex justify-between items-center">
+                  <span className="text-sm">{b.name}</span>
+                  <span
+                    className={`font-medium text-sm ${
+                      b.balance > 0
+                        ? 'text-green-600'
+                        : b.balance < 0
+                          ? 'text-red-600'
+                          : 'text-gray-500'
+                    }`}
+                  >
+                    {b.balance > 0 ? 'is owed ' : b.balance < 0 ? 'owes ' : 'settled up'}
+                    {b.balance !== 0 && formatCurrency(Math.abs(b.balance))}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </CollapsibleCard>
 
         {/* Spending Breakdown */}
@@ -298,7 +348,11 @@ export default function GroupDetail() {
                           <p className="text-sm text-gray-400">{formatDateTime(expense.created_at)}</p>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
-                          <span className="font-bold text-lg text-green-700 whitespace-nowrap">{formatCurrency(expense.amount)}</span>
+                          <span className="font-bold text-lg text-green-700 whitespace-nowrap">
+                            {isMultiCurrency && expense.currency
+                              ? formatCurrencyByCode(expense.amount, expense.currency)
+                              : formatCurrency(expense.amount)}
+                          </span>
                           <button
                             onClick={() => navigate(`/groups/${groupId}/payments/${expense.id}/edit`)}
                             className="p-1 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50 transition-colors"
@@ -340,7 +394,11 @@ export default function GroupDetail() {
                           </p>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
-                          <span className="font-bold text-lg whitespace-nowrap">{formatCurrency(expense.amount)}</span>
+                          <span className="font-bold text-lg whitespace-nowrap">
+                            {isMultiCurrency && expense.currency
+                              ? formatCurrencyByCode(expense.amount, expense.currency)
+                              : formatCurrency(expense.amount)}
+                          </span>
                           <button
                             onClick={() => navigate(`/groups/${groupId}/expenses/${expense.id}/edit`)}
                             className="p-1 text-gray-400 hover:text-blue-600 rounded hover:bg-blue-50 transition-colors"

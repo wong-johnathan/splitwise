@@ -3,14 +3,15 @@ import { query } from '../db/pool';
 import { requireAuth, AuthRequest } from '../middleware/auth';
 import { broadcastToGroup } from '../services/websocket';
 import { logActivity } from '../services/activity-log';
+import { getRate } from '../services/exchange-rate';
 
 const router = Router();
 router.use(requireAuth);
 
-// POST /api/payments — record a settlement payment (reduces the amount owed)
+// POST /api/payments — record a settlement payment
 router.post('/', async (req: AuthRequest, res) => {
   try {
-    const { groupId, toUser, amount, note, date, fromUser } = req.body;
+    const { groupId, toUser, amount, note, date, fromUser, currency, fxRate } = req.body;
 
     if (!groupId || !toUser || !amount) {
       return res.status(400).json({ error: 'groupId, toUser, and amount are required' });
@@ -38,11 +39,14 @@ router.post('/', async (req: AuthRequest, res) => {
 
     // Use provided date or default to now
     const paymentDate = date || new Date().toISOString();
+    const paymentCurrency = currency || 'SGD';
+    const rate = fxRate !== undefined ? parseFloat(fxRate) : await getRate(paymentCurrency, 'SGD').catch(() => 1);
+    const amountInBase = Math.round(numAmount * rate * 100) / 100;
 
     const result = await query(
-      `INSERT INTO payments (group_id, from_user, to_user, amount, note, date)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [groupId, payer, toUser, numAmount, note || null, paymentDate]
+      `INSERT INTO payments (group_id, from_user, to_user, amount, note, date, currency, amount_in_base, fx_rate)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      [groupId, payer, toUser, numAmount, note || null, paymentDate, paymentCurrency, amountInBase, rate]
     );
 
     const payment = result.rows[0];
@@ -155,7 +159,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'Invalid payment ID' });
     }
 
-    const { amount, note, date } = req.body;
+    const { amount, note, date, currency, fxRate } = req.body;
 
     // Verify payment exists and user is involved
     const existing = await query(
@@ -181,10 +185,16 @@ router.put('/:id', async (req: AuthRequest, res) => {
 
     const updatedNote = note !== undefined ? (note || null) : payment.note;
     const updatedDate = date || payment.date;
+    const paymentCurrency = currency || payment.currency || 'SGD';
+    const rate = fxRate !== undefined ? parseFloat(fxRate)
+      : numAmount !== parseFloat(payment.amount) || currency
+        ? await getRate(paymentCurrency, 'SGD').catch(() => 1)
+        : parseFloat(payment.fx_rate || '1');
+    const amountInBase = Math.round(numAmount * rate * 100) / 100;
 
     const result = await query(
-      `UPDATE payments SET amount = $1, note = $2, date = $3 WHERE id = $4 RETURNING *`,
-      [numAmount, updatedNote, updatedDate, paymentId]
+      `UPDATE payments SET amount = $1, note = $2, date = $3, currency = $4, amount_in_base = $5, fx_rate = $6 WHERE id = $7 RETURNING *`,
+      [numAmount, updatedNote, updatedDate, paymentCurrency, amountInBase, rate, paymentId]
     );
 
     const updated = result.rows[0];

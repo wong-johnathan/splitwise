@@ -3,6 +3,7 @@ import { query, pool } from '../db/pool';
 import { requireAuth, AuthRequest } from '../middleware/auth';
 import { broadcastToGroup } from '../services/websocket';
 import { logActivity } from '../services/activity-log';
+import { getRate } from '../services/exchange-rate';
 
 const router = Router();
 router.use(requireAuth);
@@ -10,7 +11,7 @@ router.use(requireAuth);
 // POST /api/expenses — create expense with splits
 router.post('/', async (req: AuthRequest, res) => {
   try {
-    const { groupId, description, amount, splitMethod, paidBy, splits, memberIds, date, categoryId } = req.body;
+    const { groupId, description, amount, splitMethod, paidBy, splits, memberIds, date, categoryId, currency, fxRate } = req.body;
 
     if (!groupId || !description || !amount) {
       return res.status(400).json({ error: 'groupId, description, and amount are required' });
@@ -31,11 +32,14 @@ router.post('/', async (req: AuthRequest, res) => {
     }
 
     const payerId = paidBy || req.userId;
+    const expenseCurrency = currency || 'SGD';
+    const rate = fxRate !== undefined ? parseFloat(fxRate) : await getRate(expenseCurrency, 'SGD').catch(() => 1);
+    const amountInBase = Math.round(numAmount * rate * 100) / 100;
 
     const expenseResult = await query(
-      `INSERT INTO expenses (group_id, paid_by, description, amount, split_method, expense_date, category_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [groupId, payerId, description, numAmount, splitMethod || 'equal', date || new Date(), categoryId || null]
+      `INSERT INTO expenses (group_id, paid_by, description, amount, split_method, expense_date, category_id, currency, amount_in_base, fx_rate)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+      [groupId, payerId, description, numAmount, splitMethod || 'equal', date || new Date(), categoryId || null, expenseCurrency, amountInBase, rate]
     );
 
     const expenseId = expenseResult.rows[0].id;
@@ -261,7 +265,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'Invalid expense ID' });
     }
 
-    const { description, amount, paidBy, splitMethod, splits, memberIds, date, categoryId } = req.body;
+    const { description, amount, paidBy, splitMethod, splits, memberIds, date, categoryId, currency, fxRate } = req.body;
 
     if (!description || !amount) {
       return res.status(400).json({ error: 'description and amount are required' });
@@ -289,6 +293,12 @@ router.put('/:id', async (req: AuthRequest, res) => {
     const payerId = paidBy || existing.rows[0].paid_by;
     const expenseDate = date || existing.rows[0].expense_date;
     const method = splitMethod || 'equal';
+    const expenseCurrency = currency || existing.rows[0].currency || 'SGD';
+    const rate = fxRate !== undefined ? parseFloat(fxRate)
+      : numAmount !== parseFloat(existing.rows[0].amount) || currency
+        ? await getRate(expenseCurrency, 'SGD').catch(() => 1)
+        : parseFloat(existing.rows[0].fx_rate || '1');
+    const amountInBase = Math.round(numAmount * rate * 100) / 100;
 
     const client = await pool.connect();
     try {
@@ -297,9 +307,10 @@ router.put('/:id', async (req: AuthRequest, res) => {
       // 1. Update the expense row
       const updateResult = await client.query(
         `UPDATE expenses
-         SET description = $1, amount = $2, paid_by = $3, split_method = $4, expense_date = $5, category_id = $6
-         WHERE id = $7 RETURNING *`,
-        [description, numAmount, payerId, method, expenseDate, categoryId || null, expenseId]
+         SET description = $1, amount = $2, paid_by = $3, split_method = $4, expense_date = $5, category_id = $6,
+             currency = $7, amount_in_base = $8, fx_rate = $9
+         WHERE id = $10 RETURNING *`,
+        [description, numAmount, payerId, method, expenseDate, categoryId || null, expenseCurrency, amountInBase, rate, expenseId]
       );
 
       // 2. Delete existing splits
