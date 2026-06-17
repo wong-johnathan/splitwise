@@ -119,7 +119,7 @@ export default function GroupDetail() {
       loadData();
     } catch (err) {
       console.error('Delete expense error:', err);
-      alert('Failed to delete expense. You may not be the payer.');
+      alert('Failed to delete expense.');
     } finally {
       setDeletingId(null);
     }
@@ -350,16 +350,14 @@ export default function GroupDetail() {
                           >
                             edit
                           </button>
-                          {userId === expense.paid_by && (
-                            <button
-                              onClick={() => handleDeleteExpense(expense.id)}
-                              disabled={deletingId === expense.id}
-                              className="text-xs text-gray-400 hover:text-red-600 underline"
-                              title="Delete expense"
-                            >
-                              {deletingId === expense.id ? '...' : 'delete'}
-                            </button>
-                          )}
+                          <button
+                            onClick={() => handleDeleteExpense(expense.id)}
+                            disabled={deletingId === expense.id}
+                            className="text-xs text-gray-400 hover:text-red-600 underline"
+                            title="Delete expense"
+                          >
+                            {deletingId === expense.id ? '...' : 'delete'}
+                          </button>
                         </div>
                       </div>
                     )}

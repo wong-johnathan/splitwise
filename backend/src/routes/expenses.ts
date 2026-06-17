@@ -395,7 +395,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
   }
 });
 
-// DELETE /api/expenses/:id — delete an expense (only the payer can delete)
+// DELETE /api/expenses/:id — delete an expense (any group member can delete)
 router.delete('/:id', async (req: AuthRequest, res) => {
   try {
     const expenseId = parseInt(req.params.id);
@@ -403,23 +403,20 @@ router.delete('/:id', async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'Invalid expense ID' });
     }
 
-    // Get the group_id before deleting (needed for broadcast)
-    const getGroup = await query('SELECT group_id FROM expenses WHERE id = $1', [expenseId]);
-    if (getGroup.rows.length === 0) {
-      return res.status(404).json({ error: 'Expense not found' });
-    }
-    const groupId = getGroup.rows[0].group_id;
-
-    // Fetch full expense data for activity logging
-    const expenseData = await query('SELECT * FROM expenses WHERE id = $1', [expenseId]);
+    // Fetch expense data for group membership check and activity logging
+    const expenseData = await query(
+      'SELECT e.*, gm.user_id AS member_check FROM expenses e JOIN group_members gm ON gm.group_id = e.group_id AND gm.user_id = $2 WHERE e.id = $1',
+      [expenseId, req.userId]
+    );
     if (expenseData.rows.length === 0) {
-      return res.status(404).json({ error: 'Expense not found' });
+      return res.status(404).json({ error: 'Expense not found or not authorized' });
     }
     const expense = expenseData.rows[0];
+    const groupId = expense.group_id;
 
     const result = await query(
-      'DELETE FROM expenses WHERE id = $1 AND paid_by = $2 RETURNING id',
-      [expenseId, req.userId]
+      'DELETE FROM expenses WHERE id = $1 RETURNING id',
+      [expenseId]
     );
 
     if (result.rows.length === 0) {
