@@ -259,15 +259,10 @@ export default function EditExpense() {
               <CategoryPicker
                 categories={categories}
                 selectedId={categoryId}
-                groupId={groupId}
                 onSelect={(id) => {
                   setCategoryId(id);
                 }}
-                onCategoriesChange={setCategories}
                 recentIds={recentCategoryIds}
-                onNewCategory={(id) => {
-                  setRecentCategoryIds((prev) => [id, ...prev.filter((pid) => pid !== id)]);
-                }}
               />
 
               <div className="space-y-2">

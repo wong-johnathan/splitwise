@@ -1,7 +1,4 @@
 import { useState } from 'react';
-import { api, ApiError } from '@/api/client';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface Category {
@@ -14,13 +11,9 @@ interface Category {
 interface CategoryPickerProps {
   categories: Category[];
   selectedId: number | '';
-  groupId: number;
   onSelect: (id: number | '') => void;
-  onCategoriesChange: (categories: Category[]) => void;
   /** IDs used for "recent" ordering — most recent first */
   recentIds?: number[];
-  /** Fires when a brand-new category is created (not just selected) */
-  onNewCategory?: (categoryId: number) => void;
 }
 
 const RECENT_LIMIT = 8;
@@ -28,24 +21,16 @@ const RECENT_LIMIT = 8;
 export default function CategoryPicker({
   categories,
   selectedId,
-  groupId,
   onSelect,
-  onCategoriesChange,
   recentIds,
-  onNewCategory,
 }: CategoryPickerProps) {
   const [showModal, setShowModal] = useState(false);
-  const [showNewForm, setShowNewForm] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [error, setError] = useState('');
-  const [adding, setAdding] = useState(false);
 
   // Order categories: recent first, then rest, limited to RECENT_LIMIT for the pills
   const orderedForDisplay = [...categories].sort((a, b) => {
     if (!recentIds) return a.name.localeCompare(b.name);
     const aIdx = recentIds.indexOf(a.id);
     const bIdx = recentIds.indexOf(b.id);
-    // Recent ones first (lower index = more recent)
     if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
     if (aIdx !== -1) return -1;
     if (bIdx !== -1) return 1;
@@ -55,27 +40,7 @@ export default function CategoryPicker({
   const recentPills = orderedForDisplay.slice(0, RECENT_LIMIT);
   const hasMore = categories.length > RECENT_LIMIT;
 
-  // No category option — first pill
   const isNoneSelected = selectedId === '';
-
-  const handleAdd = async () => {
-    if (!newName.trim()) return;
-    setAdding(true);
-    setError('');
-    try {
-      const res = await api.createCategory({ groupId, name: newName.trim() });
-      const updated = [...categories, res.category];
-      onCategoriesChange(updated);
-      onSelect(res.category.id);
-      onNewCategory?.(res.category.id);
-      setNewName('');
-      setShowNewForm(false);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Failed to create category');
-    } finally {
-      setAdding(false);
-    }
-  };
 
   const selectedCategory = categories.find((c) => c.id === selectedId);
 
@@ -125,28 +90,19 @@ export default function CategoryPicker({
           );
         })}
 
-        {/* "All categories" pill */}
-        {(hasMore || categories.length > 0) && (
+        {/* "All categories" pill (only when there are more than fit in pills) */}
+        {hasMore && (
           <button
             type="button"
             onClick={() => setShowModal(true)}
             className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border border-dashed border-gray-300 bg-white text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors"
           >
-            {hasMore ? `+${categories.length - RECENT_LIMIT} more` : 'All categories'}
+            +{categories.length - RECENT_LIMIT} more
           </button>
         )}
-
-        {/* Quick-add pill */}
-        <button
-          type="button"
-          onClick={() => setShowModal(true)}
-          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border border-dashed border-blue-300 bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-        >
-          + New
-        </button>
       </div>
 
-      {/* Selected category label (for clarity when scrolling past the pills) */}
+      {/* Selected category label */}
       {selectedCategory && !isNoneSelected && (
         <p className="text-xs text-gray-400">
           Selected: {selectedCategory.icon && `${selectedCategory.icon} `}{selectedCategory.name}
@@ -154,7 +110,7 @@ export default function CategoryPicker({
       )}
 
       {/* Modal: full category list */}
-      <Dialog open={showModal} onClose={() => { setShowModal(false); setShowNewForm(false); setNewName(''); setError(''); }}>
+      <Dialog open={showModal} onClose={() => setShowModal(false)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Choose a category</DialogTitle>
@@ -196,37 +152,15 @@ export default function CategoryPicker({
             })}
           </div>
 
-          {/* Add new category section */}
-          {showNewForm ? (
-            <div className="border-t pt-3 space-y-2">
-              {error && <p className="text-xs text-red-500">{error}</p>}
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Category name"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  className="flex-1 h-9 text-sm"
-                  autoFocus
-                />
-                <Button type="button" size="sm" onClick={handleAdd} disabled={adding || !newName.trim()}>
-                  {adding ? 'Adding...' : 'Add'}
-                </Button>
-                <Button type="button" size="sm" variant="outline" onClick={() => { setShowNewForm(false); setNewName(''); setError(''); }}>
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="border-t pt-3">
-              <button
-                type="button"
-                onClick={() => setShowNewForm(true)}
-                className="w-full text-center text-sm text-blue-600 hover:text-blue-700 font-medium py-1.5 rounded-md hover:bg-blue-50 transition-colors"
-              >
-                + Add new category
-              </button>
-            </div>
-          )}
+          <div className="border-t pt-3 text-center">
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              className="text-sm text-gray-500 hover:text-gray-700 font-medium py-1"
+            >
+              Close
+            </button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
