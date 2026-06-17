@@ -1,21 +1,16 @@
 import { test, expect } from '@playwright/test';
+import { authenticate } from './helpers';
 
 test.describe('Groups Flow', () => {
-  let testEmail = '';
-
-  test.beforeEach(async ({ page }) => {
-    testEmail = `group-${Date.now()}-${Math.random()}@example.com`;
-    // Register a new user before each test
-    await page.goto('/login');
-    await page.getByText('Register').click();
-    await page.getByPlaceholder('you@example.com').fill(testEmail);
-    await page.getByPlaceholder('Your name').fill('Group Tester');
-    await page.getByPlaceholder('At least 6 characters').fill('testpass123');
-    await page.getByRole('button', { name: 'Create Account' }).click();
-    await expect(page).toHaveURL(/\/dashboard/);
-  });
-
   test('user can create a new group', async ({ page }) => {
+    const { token } = await authenticate();
+    await page.addInitScript((t) => {
+      localStorage.setItem('token', t);
+    }, token);
+
+    await page.goto('/dashboard');
+    await expect(page).toHaveURL(/\/dashboard/);
+
     await page.getByRole('button', { name: 'New Group' }).click();
     await expect(page).toHaveURL(/\/groups\/new/);
 
@@ -29,8 +24,13 @@ test.describe('Groups Flow', () => {
   });
 
   test('group list shows empty state when no groups exist', async ({ page }) => {
+    const { token } = await authenticate();
+    await page.addInitScript((t) => {
+      localStorage.setItem('token', t);
+    }, token);
+
+    await page.goto('/dashboard');
     await expect(page.getByText('No groups yet')).toBeVisible();
-    // Use .first() to avoid strict mode violation if multiple elements match
     await expect(page.getByText('Create Your First Group').first()).toBeVisible();
   });
 });
