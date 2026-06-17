@@ -54,10 +54,12 @@ router.post('/', async (req: AuthRequest, res) => {
     broadcastToGroup(groupId, { type: 'payment_created', data: { paymentId: payment.id } });
 
     // Log activity
+    const payerName = (await query('SELECT name FROM users WHERE id = $1', [payer])).rows[0]?.name || `User #${payer}`;
+    const toName = (await query('SELECT name FROM users WHERE id = $1', [toUser])).rows[0]?.name || `User #${toUser}`;
     logActivity({
       groupId, actorId: req.userId!, actionType: 'created', entityType: 'payment',
       entityId: payment.id,
-      description: `recorded a settlement ($${numAmount.toFixed(2)})`,
+      description: `recorded a settlement ($${numAmount.toFixed(2)}) from ${payerName} to ${toName}`,
       metadata: { fromUser: payer, toUser, amount: numAmount, note: note || null },
     }).catch(console.error);
   } catch (err) {
@@ -157,7 +159,11 @@ router.put('/:id', async (req: AuthRequest, res) => {
 
     // Verify payment exists and user is involved
     const existing = await query(
-      `SELECT * FROM payments WHERE id = $1`,
+      `SELECT p.*, fu.name AS from_name, tu.name AS to_name
+       FROM payments p
+       JOIN users fu ON fu.id = p.from_user
+       JOIN users tu ON tu.id = p.to_user
+       WHERE p.id = $1`,
       [paymentId]
     );
 
@@ -193,7 +199,10 @@ router.put('/:id', async (req: AuthRequest, res) => {
     const oldAmount = parseFloat(payment.amount);
     const descParts: string[] = [];
     if (Math.abs(oldAmount - numAmount) > 0.001) descParts.push(`amount $${oldAmount.toFixed(2)} → $${numAmount.toFixed(2)}`);
-    const updateDesc = descParts.length > 0 ? `updated a settlement (${descParts.join(', ')})` : 'updated a settlement';
+    const fromTo = `from ${payment.from_name} to ${payment.to_name}`;
+    const updateDesc = descParts.length > 0
+      ? `updated settlement ${fromTo} (${descParts.join(', ')})`
+      : `updated settlement ${fromTo}`;
     logActivity({
       groupId: payment.group_id, actorId: req.userId!, actionType: 'updated',
       entityType: 'payment', entityId: paymentId,

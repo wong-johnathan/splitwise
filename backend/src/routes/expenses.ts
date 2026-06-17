@@ -373,7 +373,10 @@ router.put('/:id', async (req: AuthRequest, res) => {
       const descParts: string[] = [];
       if (oldExpense.description !== description) descParts.push(`"${oldExpense.description}" → "${description}"`);
       if (Math.abs(oldAmount - numAmount) > 0.001) descParts.push(`$${oldAmount.toFixed(2)} → $${numAmount.toFixed(2)}`);
-      const updateDesc = descParts.length > 0 ? `updated ${descParts.join(', ')}` : `updated "${description}"`;
+      const name = description || oldExpense.description;
+      const updateDesc = descParts.length > 0
+        ? `updated "${name}" (${descParts.join(', ')})`
+        : `updated "${name}"`;
       logActivity({
         groupId, actorId: req.userId!, actionType: 'updated', entityType: 'expense',
         entityId: expenseId,
