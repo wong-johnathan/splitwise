@@ -354,16 +354,14 @@ export default function SettleUp() {
                         >
                           edit
                         </button>
-                        {(p.from_user === userId || p.to_user === userId) && (
-                          <button
-                            onClick={() => handleDeletePayment(p.id)}
-                            disabled={deletingId === p.id}
-                            className="text-xs text-gray-400 hover:text-red-600 underline"
-                            title="Delete payment"
-                          >
-                            {deletingId === p.id ? '...' : 'delete'}
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleDeletePayment(p.id)}
+                          disabled={deletingId === p.id}
+                          className="text-xs text-gray-400 hover:text-red-600 underline"
+                          title="Delete payment"
+                        >
+                          {deletingId === p.id ? '...' : 'delete'}
+                        </button>
                       </div>
                     </div>
                   </div>

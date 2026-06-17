@@ -103,8 +103,8 @@ router.delete('/:id', async (req: AuthRequest, res) => {
     const groupId = getGroup.rows[0].group_id;
 
     const result = await query(
-      'DELETE FROM payments WHERE id = $1 AND (from_user = $2 OR to_user = $2) RETURNING id',
-      [paymentId, req.userId]
+      'DELETE FROM payments WHERE id = $1 RETURNING id',
+      [paymentId]
     );
 
     if (result.rows.length === 0) {
@@ -142,9 +142,7 @@ router.put('/:id', async (req: AuthRequest, res) => {
     }
 
     const payment = existing.rows[0];
-    if (payment.from_user !== req.userId && payment.to_user !== req.userId) {
-      return res.status(403).json({ error: 'Only involved users can edit this payment' });
-    }
+    const groupId = payment.group_id;
 
     const numAmount = amount !== undefined ? parseFloat(amount) : payment.amount;
     if (isNaN(numAmount) || numAmount <= 0) {
