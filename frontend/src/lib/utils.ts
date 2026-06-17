@@ -38,3 +38,15 @@ export function formatDate(dateStr: string): string {
   }
   return formatted;
 }
+
+/** Always shows date + time, e.g. "Jun 17, 2026, 4:14 PM" */
+export function formatDateTime(dateStr: string): string {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}

@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import Navbar from '@/components/layout/Navbar';
 import { LoadingSpinner } from '@/components/ui/loading';
 import { EmptyState } from '@/components/ui/empty-state';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDateTime, toLocalDatetimeString } from '@/lib/utils';
 
 interface Debt {
   fromUser: number;
@@ -46,7 +46,7 @@ export default function SettleUp() {
   const [settleDirection, setSettleDirection] = useState<'paying' | 'receiving'>('paying');
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(toLocalDatetimeString(new Date()));
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -131,7 +131,7 @@ export default function SettleUp() {
       setSuccess(true);
       setAmount('');
       setNote('');
-      setDate(new Date().toISOString().split('T')[0]);
+      setDate(toLocalDatetimeString(new Date()));
       setSelectedDebt(null);
       fetchData();
       setTimeout(() => setSuccess(false), 3000);
@@ -146,7 +146,7 @@ export default function SettleUp() {
     setEditingPaymentId(p.id);
     setEditAmount(p.amount.toFixed(2));
     setEditNote(p.note || '');
-    setEditDate(p.date);
+    setEditDate((p.date || p.created_at)?.slice(0, 16) || '');
     setEditError('');
   };
 
@@ -331,9 +331,9 @@ export default function SettleUp() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Settlement Date</Label>
+                  <Label>Settlement Date/Time</Label>
                   <Input
-                    type="date"
+                    type="datetime-local"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
                   />
@@ -380,7 +380,7 @@ export default function SettleUp() {
                           <p className="text-xs text-gray-500">{p.note}</p>
                         )}
                         <p className="text-xs text-gray-400">
-                          {formatDate(p.created_at)}
+                          {formatDateTime(p.created_at)}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -424,9 +424,9 @@ export default function SettleUp() {
                             />
                           </div>
                           <div>
-                            <label className="text-xs font-medium">Date</label>
+                            <label className="text-xs font-medium">Date/Time</label>
                             <input
-                              type="date"
+                              type="datetime-local"
                               value={editDate}
                               onChange={(e) => setEditDate(e.target.value)}
                               className="w-full mt-1 px-2 py-1 text-sm border rounded"

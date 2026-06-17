@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Navbar from '@/components/layout/Navbar';
 import { LoadingSpinner } from '@/components/ui/loading';
 import { EmptyState } from '@/components/ui/empty-state';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 import AddMemberDialog from '@/components/AddMemberDialog';
 
 interface Expense {
@@ -319,7 +319,7 @@ export default function GroupDetail() {
                           {expense.note && (
                             <p className="text-sm text-gray-500">{expense.note}</p>
                           )}
-                          <p className="text-sm text-gray-400">{formatDate(expense.created_at)}</p>
+                          <p className="text-sm text-gray-400">{formatDateTime(expense.created_at)}</p>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-lg text-green-700">{formatCurrency(expense.amount)}</span>
@@ -328,7 +328,7 @@ export default function GroupDetail() {
                               setEditPaymentId(expense.id);
                               setEditAmount(String(expense.amount));
                               setEditNote(expense.note || '');
-                              setEditDate(expense.expense_date?.slice(0, 10) || '');
+                              setEditDate(expense.created_at?.slice(0, 16) || new Date().toISOString().slice(0, 16));
                               setEditError('');
                             }}
                             className="text-xs text-gray-400 hover:text-blue-600 underline"
@@ -414,9 +414,9 @@ export default function GroupDetail() {
                             />
                           </div>
                           <div className="flex flex-col gap-1">
-                            <label className="text-xs text-gray-600">Date</label>
+                            <label className="text-xs text-gray-600">Date/Time</label>
                             <input
-                              type="date"
+                              type="datetime-local"
                               value={editDate}
                               onChange={(e) => setEditDate(e.target.value)}
                               className="border border-gray-300 rounded px-2 py-1 text-sm"

@@ -35,8 +35,8 @@ router.post('/', async (req: AuthRequest, res) => {
       return res.status(403).json({ error: 'Both users must be group members' });
     }
 
-    // Use provided date or default to today
-    const paymentDate = date || new Date().toISOString().split('T')[0];
+    // Use provided date or default to now
+    const paymentDate = date || new Date().toISOString();
 
     const result = await query(
       `INSERT INTO payments (group_id, from_user, to_user, amount, note, date)

@@ -152,4 +152,18 @@ export async function runMigrations() {
   } catch (err) {
     console.error('❌ expense_date migration failed:', err);
   }
+
+  // ✅ Payment date → TIMESTAMPTZ so users can enter precise datetime
+  try {
+    const payDateTypeCheck = await pool.query(`
+      SELECT data_type FROM information_schema.columns
+      WHERE table_name = 'payments' AND column_name = 'date'
+    `);
+    if (payDateTypeCheck.rows.length > 0 && payDateTypeCheck.rows[0].data_type === 'date') {
+      await pool.query('ALTER TABLE payments ALTER COLUMN date TYPE TIMESTAMPTZ USING date::timestamptz');
+      console.log("✅ Changed payments.date from DATE to TIMESTAMPTZ");
+    }
+  } catch (err) {
+    console.error('❌ payments.date migration failed:', err);
+  }
 }
