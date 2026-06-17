@@ -55,7 +55,7 @@ test.describe('Auth Flow', () => {
 
     // Should be back on group detail with the expense visible
     await expect(page).toHaveURL(/\/groups\/\d+/);
-    await expect(page.getByText('E2E Test Expense')).toBeVisible();
+    await expect(page.getByText('E2E Test Expense', { exact: true })).toBeVisible();
   });
 
   test('user can sign out', async ({ page }) => {
