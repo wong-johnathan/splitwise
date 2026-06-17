@@ -12,6 +12,7 @@ import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 import { Pencil, Trash2 } from 'lucide-react';
 import AddMemberDialog from '@/components/AddMemberDialog';
 import ActivityFeed from '@/components/ActivityFeed';
+import SpendingBreakdown from '@/components/SpendingBreakdown';
 
 interface Expense {
   id: number;
@@ -222,6 +223,11 @@ export default function GroupDetail() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Spending Breakdown */}
+        {expenses.filter(e => e.type !== 'payment').length > 0 && (
+          <SpendingBreakdown expenses={expenses} members={members} />
+        )}
 
         {/* Simplified debts */}
         {debts.length > 0 && (
