@@ -2,7 +2,7 @@
 
 A full-stack **Splitwise clone** for splitting expenses with friends. Built with Docker Compose, Express.js, React, PostgreSQL, Redis, and shadcn/ui.
 
-> **Live demo:** Not deployed — runs locally via Docker.
+> **Live demo:** [splitwise.johnathanwwh.com](https://splitwise.johnathanwwh.com)
 > **Author:** [@wong-johnathan](https://github.com/wong-johnathan)
 
 ---
@@ -275,12 +275,12 @@ Key tables:
 
 ## Future Ideas
 
-- [ ] Google OAuth via Passport.js
-- [ ] Real-time updates via WebSockets
+- [x] Google OAuth
+- [x] Real-time updates via WebSockets
 - [ ] Receipt photo uploads
 - [ ] Recurring expenses (rent, subscriptions)
-- [ ] Spending breakdown charts
-- [ ] Multi-currency with FX rates
+- [x] Spending breakdown charts
+- [x] Multi-currency with FX rates
 - [ ] Email invite system
 - [ ] Dark mode
 - [ ] Export to CSV
