@@ -9,7 +9,7 @@ import Navbar from '@/components/layout/Navbar';
 import { LoadingSpinner } from '@/components/ui/loading';
 import { EmptyState } from '@/components/ui/empty-state';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
-import { formatCurrencyByCode } from '@/lib/currencies';
+import { formatCurrencyByCode, SUPPORTED_CURRENCIES, getCurrencySymbol } from '@/lib/currencies';
 import { Pencil, Trash2 } from 'lucide-react';
 import AddMemberDialog from '@/components/AddMemberDialog';
 import ActivityFeed from '@/components/ActivityFeed';
@@ -190,6 +190,8 @@ export default function GroupDetail() {
             <h2 className="text-xl sm:text-2xl font-bold">{group.name}</h2>
             <p className="text-xs sm:text-sm text-gray-500">
               {members.length} member{members.length !== 1 ? 's' : ''}
+              {' · '}{getCurrencySymbol(baseCurrency)} {baseCurrency}
+              {isMultiCurrency && ' · Multi-currency'}
               {group.description && ` · ${group.description}`}
             </p>
           </div>
@@ -303,6 +305,67 @@ export default function GroupDetail() {
                 {m.name}
               </span>
             ))}
+          </div>
+        </CollapsibleCard>
+
+        {/* Group Settings */}
+        <CollapsibleCard title="Group Settings" storageKey="group_settings" defaultOpen={false}>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Base Currency</label>
+              <select
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={baseCurrency}
+                onChange={async (e) => {
+                  const newCurrency = e.target.value;
+                  try {
+                    await api.updateGroup(groupId, { baseCurrency: newCurrency });
+                    setBaseCurrency(newCurrency);
+                    setGroup((prev: any) => ({ ...prev, base_currency: newCurrency }));
+                  } catch (err) {
+                    console.error('Failed to update base currency:', err);
+                  }
+                }}
+              >
+                {SUPPORTED_CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.code} — {c.name} ({c.symbol})
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-400">New expenses will use this as the default currency</p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                role="switch"
+                aria-checked={isMultiCurrency}
+                onClick={async () => {
+                  const newValue = !isMultiCurrency;
+                  try {
+                    await api.updateGroup(groupId, { multiCurrency: newValue });
+                    setIsMultiCurrency(newValue);
+                    setGroup((prev: any) => ({ ...prev, multi_currency: newValue }));
+                  } catch (err) {
+                    console.error('Failed to update multi-currency:', err);
+                  }
+                }}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                  isMultiCurrency ? 'bg-blue-600' : 'bg-gray-200'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transform ring-0 transition-transform ${
+                    isMultiCurrency ? 'translate-x-4' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+              <label className="text-sm font-medium">
+                Multi-currency expenses
+              </label>
+            </div>
+            <p className="text-xs text-gray-400">Allow expenses in currencies other than the base</p>
           </div>
         </CollapsibleCard>
 

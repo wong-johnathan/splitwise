@@ -59,6 +59,12 @@ export const api = {
       body: JSON.stringify({ userId }),
     }),
 
+  updateGroup: (id: number, data: { baseCurrency?: string; multiCurrency?: boolean }) =>
+    request<{ group: any }>(`/api/groups/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
   deleteGroup: (id: number) =>
     request<{ message: string }>(`/api/groups/${id}`, { method: 'DELETE' }),
 

@@ -276,6 +276,58 @@ router.post('/:id/members', async (req: AuthRequest, res) => {
   }
 });
 
+// PUT /api/groups/:id — update group settings (any group member)
+router.put('/:id', async (req: AuthRequest, res) => {
+  try {
+    const groupId = parseInt(req.params.id);
+    if (isNaN(groupId)) {
+      return res.status(400).json({ error: 'Invalid group ID' });
+    }
+
+    const { baseCurrency, multiCurrency } = req.body;
+
+    const memberCheck = await query(
+      'SELECT 1 FROM group_members WHERE group_id = $1 AND user_id = $2',
+      [groupId, req.userId]
+    );
+    if (memberCheck.rows.length === 0) {
+      return res.status(403).json({ error: 'Not a member of this group' });
+    }
+
+    const updates: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+
+    if (baseCurrency !== undefined) {
+      updates.push(`base_currency = $${idx++}`);
+      values.push(baseCurrency);
+    }
+    if (multiCurrency !== undefined) {
+      updates.push(`multi_currency = $${idx++}`);
+      values.push(multiCurrency);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    values.push(groupId);
+    const result = await query(
+      `UPDATE groups SET ${updates.join(', ')} WHERE id = $${idx} RETURNING *`,
+      values
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+
+    res.json({ group: result.rows[0] });
+  } catch (err) {
+    console.error('Update group error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // DELETE /api/groups/:id — delete a group (only creator can delete)
 router.delete('/:id', async (req: AuthRequest, res) => {
   try {
