@@ -87,7 +87,7 @@ export default function NewExpense() {
       .then(data => {
         setCurrenciesWithRates(data.currencies);
         const found = data.currencies.find((c: any) => c.code === currency);
-        if (found) setFxRate(found.rate);
+        if (found && found.rate > 0) setFxRate(1 / found.rate);
       })
       .catch(() => {});
   }, [currency, baseCurrency, isMultiCurrency]);

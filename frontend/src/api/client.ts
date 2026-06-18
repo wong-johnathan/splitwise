@@ -78,6 +78,8 @@ export const api = {
     splits?: { userId: number; amount: number; percentage?: number }[];
     memberIds?: number[];
     date?: string;
+    currency?: string;
+    fxRate?: number;
   }) =>
     request<{ expense: any; splits: any[] }>('/api/expenses', {
       method: 'POST',
@@ -92,6 +94,8 @@ export const api = {
     splits?: { userId: number; amount: number; percentage?: number }[];
     memberIds?: number[];
     date?: string;
+    currency?: string;
+    fxRate?: number;
   }) =>
     request<{ expense: any; splits: any[] }>(`/api/expenses/${id}`, {
       method: 'PUT',

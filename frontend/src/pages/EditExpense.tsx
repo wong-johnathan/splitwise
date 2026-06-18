@@ -9,6 +9,7 @@ import Navbar from '@/components/layout/Navbar';
 import { LoadingSpinner } from '@/components/ui/loading';
 import { formatCurrency, toLocalDatetimeString, toUtcIsoString } from '@/lib/utils';
 import CategoryPicker from '@/components/CategoryPicker';
+import { SUPPORTED_CURRENCIES, getCurrencySymbol } from '@/lib/currencies';
 
 interface Member {
   id: number;
@@ -54,6 +55,12 @@ export default function EditExpense() {
   const [categoryId, setCategoryId] = useState<number | ''>('');
   const [recentCategoryIds, setRecentCategoryIds] = useState<number[]>([]);
 
+  // Multi-currency state
+  const [baseCurrency, setBaseCurrency] = useState('SGD');
+  const [isMultiCurrency, setIsMultiCurrency] = useState(false);
+  const [currency, setCurrency] = useState('SGD');
+  const [fxRate, setFxRate] = useState<number | null>(null);
+
   useEffect(() => {
     if (!groupId || !expenseId) return;
 
@@ -66,6 +73,11 @@ export default function EditExpense() {
         setMembers(ms);
         setGroupName(groupData.group.name);
         setCategories(catData.categories);
+
+        const baseCcy = groupData.group.base_currency || 'SGD';
+        setBaseCurrency(baseCcy);
+        setIsMultiCurrency(groupData.group.multi_currency || false);
+        setCurrency(exp.currency || baseCcy);
 
         // Pre-populate form
         setDescription(exp.description);
@@ -107,6 +119,17 @@ export default function EditExpense() {
       })
       .catch(console.error);
   }, [groupId, expenseId]);
+
+  // Fetch rates when currency changes (multi-currency only)
+  useEffect(() => {
+    if (!isMultiCurrency) return;
+    api.getCurrencies(baseCurrency)
+      .then(data => {
+        const found = data.currencies.find((c: any) => c.code === currency);
+        if (found && found.rate > 0) setFxRate(1 / found.rate);
+      })
+      .catch(() => {});
+  }, [currency, baseCurrency, isMultiCurrency]);
 
   const toggleMember = (memberId: number) => {
     setCheckedMembers((prev) => {
@@ -194,7 +217,11 @@ export default function EditExpense() {
         }));
       }
 
-      await api.updateExpense(expenseId, payload);
+      await api.updateExpense(expenseId, {
+        ...payload,
+        currency: isMultiCurrency ? currency : undefined,
+        fxRate: isMultiCurrency && fxRate ? fxRate : undefined,
+      });
       // Track the selected category as recently used
       if (categoryId) {
         setRecentCategoryIds((prev) => [categoryId, ...prev.filter((id) => id !== categoryId)]);
@@ -255,6 +282,37 @@ export default function EditExpense() {
                   required
                 />
               </div>
+
+              {/* Currency selector (multi-currency only) */}
+              {isMultiCurrency && (
+                <div className="space-y-2">
+                  <Label>Currency</Label>
+                  <select
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value)}
+                  >
+                    {SUPPORTED_CURRENCIES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.code} — {c.name} ({c.symbol})
+                      </option>
+                    ))}
+                  </select>
+                  {fxRate && currency !== baseCurrency && (
+                    <p className="text-xs text-gray-500">
+                      1 {currency} = {fxRate.toFixed(6)} {baseCurrency}
+                      {numAmount > 0 && (
+                        <span className="ml-2 font-medium text-gray-700">
+                          ≈ {getCurrencySymbol(baseCurrency)}{(numAmount * fxRate).toFixed(2)} {baseCurrency}
+                        </span>
+                      )}
+                    </p>
+                  )}
+                  {currency === baseCurrency && (
+                    <p className="text-xs text-gray-400">Same as group base currency ({baseCurrency})</p>
+                  )}
+                </div>
+              )}
 
               {/* Category picker */}
               <CategoryPicker
